@@ -1,0 +1,36 @@
+name: Web Tests
+
+on:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Web Unit Tests
+    runs-on: ubuntu-latest
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: ./.github/actions/setup
+
+      - name: Run Package Unit Tests
+        run: pnpm --filter @repo/shared --filter @repo/orpc-contracts test
+
+      - name: Run Web Unit Tests
+        run: pnpm --filter web test --coverage
+
+      - name: Upload coverage to Codecov
+        if: ${{ env.CODECOV_TOKEN != '' && !contains(github.event.pull_request.labels.*.name, 'skip-coverage-check') }}
+        uses: codecov/codecov-action@v6
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          token: ${{ env.CODECOV_TOKEN }}
+          files: apps/web/coverage/lcov.info
+          flags: web
+          fail_ci_if_error: false
