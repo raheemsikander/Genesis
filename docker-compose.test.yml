@@ -1,0 +1,30 @@
+services:
+  test-db:
+    container_name: genesis-test-db
+    image: postgres:16-alpine
+    ports:
+      # 5434 to avoid collision with the dev DB on 5433 (docker-compose.yml).
+      - "5434:5432"
+    environment:
+      POSTGRES_DB: genesis_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 5
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  # Future: uncomment for storage integration tests
+  # minio:
+  #   container_name: genesis-test-minio
+  #   image: minio/minio
+  #   ports:
+  #     - "9000:9000"
+  #     - "9001:9001"
+  #   command: server /data --console-address ":9001"
+  #   environment:
+  #     MINIO_ROOT_USER: minioadmin
+  #     MINIO_ROOT_PASSWORD: minioadmin

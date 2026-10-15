@@ -1,0 +1,59 @@
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css";
+
+@theme inline {
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-border: var(--border);
+	--color-destructive: var(--destructive);
+}
+
+:root {
+	--background: #f9f8fc;
+	--foreground: #302d50;
+	--card: #fcfcfd;
+	--primary: #2c429d;
+	--primary-foreground: #ffffff;
+	--muted: #f0f0f2;
+	--muted-foreground: #4a4968;
+	--border: #d9d8e0;
+	--destructive: #b34457;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--background: #15141e;
+		--foreground: #e8e6ef;
+		--card: #1c1b23;
+		--primary: #cbb8ff;
+		--primary-foreground: #15141e;
+		--muted: #202022;
+		--muted-foreground: #a8a8a8;
+		--border: #2e2d3a;
+		--destructive: #f3a3b1;
+	}
+}
+
+@media android {
+	:root {
+		--font-mono: monospace;
+		--font-rounded: normal;
+		--font-serif: serif;
+		--font-sans: normal;
+	}
+}
+
+@media ios {
+	:root {
+		--font-mono: ui-monospace;
+		--font-serif: ui-serif;
+		--font-sans: system-ui;
+		--font-rounded: ui-rounded;
+	}
+}
