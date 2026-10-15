@@ -1,0 +1,27 @@
+name: Scripts Tests
+
+on:
+  pull_request:
+    paths:
+      - "scripts/**"
+      - ".github/workflows/scripts-tests.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Sandbox Script Tests
+    runs-on: ubuntu-latest
+
+    env:
+      CI: true
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: ./.github/actions/setup
+
+      - name: Run Scripts Tests
+        run: pnpm test:scripts

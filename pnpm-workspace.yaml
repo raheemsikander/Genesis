@@ -1,0 +1,104 @@
+packages:
+  - apps/*
+  - packages/*
+minimumReleaseAge: 10080
+minimumReleaseAgeExclude:
+  # Transitive dep of next; releases minor versions more often than the 7-day gate allows.
+  - baseline-browser-mapping
+  # Transitive dep of @vitest/coverage-v8 (via istanbul-lib-report); ubiquitous and stable.
+  - semver
+  # Expo SDK and Meta's first-party React Native scopes are excluded as globs because
+  # `expo install` pins them to the SDK version, so they publish patch releases far more
+  # often than the 7-day gate allows and the gate's supply-chain protection does not apply.
+  # Community react-native-* packages are listed explicitly so any new addition goes through
+  # the 7-day gate by default; only the packages currently in apps/mobile/package.json are
+  # listed here.
+  - expo
+  - "expo-*"
+  - "@expo/*"
+  - babel-preset-expo
+  - react-native
+  - react-native-gesture-handler
+  - react-native-reanimated
+  - react-native-safe-area-context
+  - react-native-screens
+  - react-native-worklets
+  - "@react-native/*"
+  - metro
+  - "metro-*"
+overrides:
+  # Pins @tanstack/query-core to the version @tanstack/react-query expects;
+  # dependabot otherwise bumps the transitive ahead of the consumer and breaks resolution.
+  '@tanstack/query-core': ^5.97.0
+  # Tailwind v4 compiles CSS through lightningcss; apps/web's build is verified against this
+  # exact version, and uniwind (apps/mobile styling) pins the same version internally.
+  # Re-verify both `pnpm -F web build` and `expo export` (mobile) before any bump.
+  lightningcss: 1.30.1
+  # Security patches for transitive deps flagged by high-severity advisories (GENESIS-245).
+  # Each is bounded below the next major so the override cannot cross a breaking boundary:
+  # e.g. undici must stay on 7.x because jsdom@29 requires undici@^7.24.5.
+  undici: ">=7.28.0 <8"
+  hono: ">=4.12.25 <5"
+  ws: ">=8.21.0 <9"
+  vite: ">=8.0.16 <9"
+  picomatch: ">=4.0.4 <5"
+  fast-uri: ">=3.1.2 <4"
+  fast-xml-builder: ">=1.1.7 <2"
+  path-to-regexp: ">=8.4.0 <9"
+  js-cookie: ">=3.0.6 <4"
+  form-data: ">=4.0.6 <5"
+allowBuilds:
+  # Explicit allowlist for postinstall scripts: `true` for required native/build tooling,
+  # `false` for scripts we've reviewed and don't need at install time.
+  esbuild: true
+  sharp: true
+  # Native msgpack addon (transitive of next/turbo); prebuilt binary is used at runtime.
+  msgpackr-extract: true
+  # msw's postinstall copies a service-worker.js for browser use; we only run msw
+  # server-side. If a browser test ever needs the SW, run `pnpm exec msw init <dir>` once.
+  msw: false
+  # @clerk/shared's postinstall is informational; nothing the build relies on.
+  '@clerk/shared': false
+  # Transitive of @clerk/expo; postinstall isn't needed for our build.
+  browser-tabs-lock: false
+  # Optional native accelerators for `ws` (transitive); JS fallback is used. Not needed.
+  bufferutil: false
+  utf-8-validate: false
+  # core-js postinstall only prints a funding notice.
+  core-js: false
+catalog:
+  date-fns: ^4.1.0
+  "@orpc/client": ^1.13.14
+  "@orpc/contract": ^1.13.14
+  "@orpc/openapi": ^1.13.14
+  "@orpc/server": ^1.13.14
+  "@orpc/tanstack-query": ^1.13.14
+  "@orpc/zod": ^1.13.14
+  "@t3-oss/env-core": ^0.13.11
+  "@tanstack/react-form": ^1.29.0
+  "@tanstack/react-query": ^5.99.2
+  "@tanstack/react-query-devtools": ^5.97.0
+  "@types/express": ^5.0.1
+  "@types/node": ^25.6.0
+  "@types/react": ^19.2.14
+  "@types/react-dom": ^19.2.3
+  class-variance-authority: ^0.7.1
+  clsx: ^2.1.1
+  dotenv: ^17.4.2
+  lucide-react: ^1.8.0
+  next-themes: ^0.4.6
+  react: ^19.2.5
+  react-dom: ^19.2.5
+  sonner: ^2.0.5
+  tailwind-merge: ^3.5.0
+  tailwindcss: ^4.2.2
+  typescript: ^6.0.3
+  zod: ^4.3.6
+patchedDependencies:
+  # Bumps the bundled foojay-resolver-convention Gradle plugin 0.5.0 -> 1.0.0.
+  # 0.5.0 references JvmVendorSpec.IBM_SEMERU, removed in the Gradle 9.x that Expo
+  # SDK 56 ships, so `expo run:android` fails at settings evaluation. Upstream fix
+  # (facebook/react-native#55781, PR #54160) isn't in the 0.85.x line and no SDK 56
+  # patch carries it. REMOVE this patch on the next Expo SDK upgrade once the new
+  # @react-native/gradle-plugin ships foojay >= 1.0.0 (see GENESIS-248).
+  '@react-native/gradle-plugin@0.85.3': patches/@react-native__gradle-plugin@0.85.3.patch

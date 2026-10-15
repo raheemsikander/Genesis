@@ -1,0 +1,4 @@
+appId: com.conradlabs.mobile
+---
+- launchApp
+- assertVisible: "Sign in"
