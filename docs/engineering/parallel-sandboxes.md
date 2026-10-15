@@ -19,14 +19,16 @@ slot, ports, and URLs.
 | Test Postgres | 5434 | 5534 | 5634 |
 | Redis | 6379 | 6479 | 6579 |
 | Test Redis | 6380 | 6480 | 6580 |
-| Garage (S3 API) | 9000 | 9100 | 9200 |
-| Test Garage (S3 API) | 9002 | 9102 | 9202 |
+| MinIO API | 9000 | 9100 | 9200 |
+| MinIO console | 9001 | 9101 | 9201 |
+| Test MinIO API | 9002 | 9102 | 9202 |
+| Test MinIO console | 9003 | 9103 | 9203 |
 
 ## How to use it
 
 1. In a fresh worktree: `pnpm install`.
 2. `pnpm setup`. This generates slot-aware `.env` files, starts this slot's
-   infra (Postgres, Redis, Garage, which creates the storage bucket), and runs
+   infra (Postgres, Redis, MinIO), creates the storage bucket, and runs
    migrations.
 3. `pnpm dev` to start the app.
 4. `pnpm sandbox` (or `pnpm sandbox --json` for machine-readable output) to

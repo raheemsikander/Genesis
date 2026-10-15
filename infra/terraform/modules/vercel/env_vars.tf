@@ -46,10 +46,6 @@ locals {
       value     = var.next_public_mixpanel_token
       sensitive = true
     }
-    NEXT_PUBLIC_GA4_MEASUREMENT_ID = {
-      value     = var.next_public_ga4_measurement_id
-      sensitive = false
-    }
     DEPLOY_URL = {
       // Derived from local.effective_domain so it always matches the frontend's
       // public URL — keeps Rollbar source-map prefix in sync without a second var.

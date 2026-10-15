@@ -1,6 +1,6 @@
 # Cloudflare R2 Storage
 
-> **Optional** — the app runs without it. For local development, Garage is used instead (see [`LOCAL_ENV.md`](../LOCAL_ENV.md)).
+> **Optional** — the app runs without it. For local development, MinIO is used instead (see [`LOCAL_ENV.md`](../LOCAL_ENV.md)).
 
 Terraform creates the R2 bucket automatically and injects `S3_ENDPOINT`, `S3_REGION`, and `S3_BUCKET` into the Render env group. Follow the steps below to supply the required credentials.
 

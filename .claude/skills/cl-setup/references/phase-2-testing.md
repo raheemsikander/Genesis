@@ -27,7 +27,7 @@ pnpm test:server:unit 2>&1 | tail -5                        # Unit tests passing
 
 **You usually don't need to run this manually.** `pnpm test:server:integration` auto-starts the test DB. The standalone `pnpm infra:test:up` / `pnpm infra:test:down` commands are for cases when the engineer wants the DB running between test runs (faster iteration) or wants to inspect it with an external client.
 
-**Verify (only if running manually):** `pnpm infra:test:up` completes with the test Postgres, Redis, and Garage all healthy on the slot's test ports (5434, 6380 and 9002 at slot 0). The test stack's compose project is `<product>-test` at slot 0 and `<product>-s<n>-test` from slot 1 up; `pnpm sandbox --json` reports it as `.composeProjects.test`, so prefer reading it from there over composing the name by hand:
+**Verify (only if running manually):** `pnpm infra:test:up` completes with the test Postgres, Redis, and MinIO all healthy on the slot's test ports (5434, 6380, 9002 and 9003 at slot 0). The test stack's compose project is `<product>-test` at slot 0 and `<product>-s<n>-test` from slot 1 up; `pnpm sandbox --json` reports it as `.composeProjects.test`, so prefer reading it from there over composing the name by hand:
 
 ```bash
 docker compose -p "$(pnpm sandbox --json | jq -r .composeProjects.test)" -f docker-compose.test.yml ps

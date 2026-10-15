@@ -140,11 +140,14 @@ function buildAllowlistChanges(name: string, repoUrl: string): Change[] {
 			replace: `$1${name}`,
 		},
 		{
-			// The fixed suffixes keep any renamed key at Garage's minimums: 8
-			// characters for the key ID, 16 for the secret.
 			path: "docker-compose.yml",
-			search: /(\bGARAGE_DEFAULT_(?:ACCESS|SECRET)_KEY:\s*)genesis-/g,
-			replace: `$1${name}-`,
+			search: /(\bMINIO_ROOT_USER:\s*)genesis\b/g,
+			replace: `$1${name}`,
+		},
+		{
+			path: "docker-compose.yml",
+			search: /(\bMINIO_ROOT_PASSWORD:\s*)genesis(\d+)/g,
+			replace: `$1${name}$2`,
 		},
 		{
 			path: "docker-compose.yml",
@@ -158,13 +161,13 @@ function buildAllowlistChanges(name: string, repoUrl: string): Change[] {
 		},
 		{
 			path: "docker-compose.yml",
-			search: /Key genesis-dev-key \/ genesis-dev-secret-key/g,
-			replace: `Key ${name}-dev-key / ${name}-dev-secret-key`,
+			search: /username: genesis, password: genesis123/g,
+			replace: `username: ${name}, password: ${name}123`,
 		},
 
 		{
 			path: "docker-compose.test.yml",
-			search: /\bgenesis-test-(db|garage)\b/g,
+			search: /\bgenesis-test-(db|minio)\b/g,
 			replace: `${name}-test-$1`,
 		},
 		{

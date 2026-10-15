@@ -1,7 +1,7 @@
 # =============================================================================
 # Local Development Infrastructure
 #
-# Starts PostgreSQL, Redis, and Garage locally so you can run the app
+# Starts PostgreSQL, Redis, and MinIO locally so you can run the app
 # without installing anything on your machine.
 #
 # Usage:
@@ -64,43 +64,59 @@ services:
       retries: 5
 
   # ---------------------------------------------------------------------------
-  # Garage: S3-compatible local object storage (stands in for Cloudflare R2)
-  # S3 API (slot 0 default): http://localhost:9000, other slots offset by
-  # slot x 100. Key genesis-dev-key / genesis-dev-secret-key.
+  # MinIO: S3-compatible local object storage
+  # API (slot 0 default):     http://localhost:9000
+  # Console (slot 0 default): http://localhost:9001  (username: genesis, password: genesis123)
+  # Other slots offset by slot x 100.
   #
-  # Replaced MinIO, whose images were withdrawn from every public registry.
-  # `--single-node --default-bucket` makes the server itself apply the layout
-  # and create the key and the `file-uploads` bucket on first boot, and skip
-  # them when they already exist, so there is no separate init step.
-  # Garage rejects key IDs under 8 characters and secrets under 16, and
-  # refuses to start if the secret changes on an existing volume
-  # (`pnpm infra:down --volumes`).
-  # There is no web console; inspect from the CLI instead:
-  #   docker compose exec garage /garage bucket info file-uploads
+  # Note: MinIO is not yet wired up in the application code. This service
+  # is here so local dev matches production infrastructure from the start.
+  # When integrating, use the AWS S3 SDK pointed at http://localhost:9000
+  # (slot 0 default; other slots offset by slot x 100).
   # ---------------------------------------------------------------------------
-  garage:
-    # Pinned by digest: Docker Hub gets a new commit-hash tag almost daily.
-    image: dxflrs/garage:v2.4.1@sha256:9c96caa2612d3411acc5b0e6701fb238dbfba33e533a6d7d3d811a4b12d0d020
-    command: ["/garage", "server", "--single-node", "--default-bucket"]
+  minio:
+    image: minio/minio
     ports:
-      - "${GARAGE_PORT:-9000}:3900"
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
     environment:
-      GARAGE_DEFAULT_ACCESS_KEY: genesis-dev-key
-      GARAGE_DEFAULT_SECRET_KEY: genesis-dev-secret-key
-      GARAGE_DEFAULT_BUCKET: file-uploads
-      # Without this, every healthcheck logs three INFO lines.
-      RUST_LOG: garage=info,garage_net=warn,garage_api_admin=warn
+      MINIO_ROOT_USER: genesis
+      MINIO_ROOT_PASSWORD: genesis123
+    command: server /data --console-address ":9001"
     volumes:
-      - ./infra/garage/garage.toml:/etc/garage.toml:ro
-      - garage_data:/var/lib/garage
+      - minio_data:/data
     healthcheck:
-      # Exec form: the image has no shell.
-      test: ["CMD", "/garage", "health"]
-      interval: 2s
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
       timeout: 5s
-      retries: 15
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # MinIO bucket bootstrap: one-shot init container.
+  # Gated behind the `init` profile so it does NOT start with `pnpm infra:up`
+  # (services with profiles are excluded from the default `up`). It is run
+  # explicitly by `pnpm setup` (or `docker compose run --rm minio-init`) after
+  # the infra is healthy, to create the default `file-uploads` bucket.
+  # `mb --ignore-existing` makes this safe to re-run.
+  # ---------------------------------------------------------------------------
+  minio-init:
+    image: minio/mc
+    profiles: ["init"]
+    restart: "no"
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: genesis
+      MINIO_ROOT_PASSWORD: genesis123
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD} &&
+      mc mb --ignore-existing local/file-uploads &&
+      echo 'MinIO bucket file-uploads ready.'
+      "
 
 volumes:
   postgres_data:
   redis_data:
-  garage_data:
+  minio_data:

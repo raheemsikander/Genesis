@@ -14,11 +14,8 @@ RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
 
 WORKDIR /app
 
-# Copy dependency manifests first so pnpm install is cached across code changes.
-# pnpm-workspace.yaml declares patchedDependencies, so the patch files must be
-# present before install or pnpm fails hashing them.
+# Copy dependency manifests first so pnpm install is cached across code changes
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
-COPY patches ./patches
 COPY apps/server/package.json ./apps/server/
 COPY apps/web/package.json ./apps/web/
 COPY packages/orpc-contracts/package.json ./packages/orpc-contracts/
@@ -34,11 +31,7 @@ RUN pnpm --filter server build
 
 # Deploy server with production dependencies only into an isolated directory.
 # --legacy bypasses the inject-workspace-packages requirement.
-# The only patched dependency belongs to the mobile app, which this image never
-# installs, so the deploy would abort with ERR_PNPM_UNUSED_PATCH. Relax the check
-# in the image's copy of the workspace config only; the repo keeps it strict.
-RUN printf '\nallowUnusedPatches: true\n' >> pnpm-workspace.yaml \
-	&& pnpm --filter server --prod deploy --legacy /prod/server
+RUN pnpm --filter server --prod deploy --legacy /prod/server
 
 # =============================================================================
 # Stage 2: runner

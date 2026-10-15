@@ -7,7 +7,7 @@ data "terraform_remote_state" "shared" {
   backend = "remote"
 
   config = {
-    organization = "conradlabs"
+    organization = "project-genesis"
     workspaces = {
       name = "genesis-shared"
     }
@@ -133,7 +133,6 @@ module "vercel" {
   next_public_rollbar_client_token = var.next_public_rollbar_client_token
   rollbar_client_sourcemap_token   = var.rollbar_client_sourcemap_token
   next_public_mixpanel_token       = var.next_public_mixpanel_token
-  next_public_ga4_measurement_id   = var.next_public_ga4_measurement_id
   frontend_domain                  = var.frontend_domain
 }
 

@@ -4,26 +4,6 @@ import { env } from "../utils/env";
 let _client: S3Client | null = null;
 let _presignClient: S3Client | null = null;
 
-/**
- * Checksums only when an operation requires one. By default the SDK signs a
- * CRC32 of the empty body into every presigned PUT URL, and storage that
- * verifies it (Garage, SeaweedFS, AWS) then rejects the real upload.
- */
-function createClient(
-	endpoint: string,
-	accessKeyId: string,
-	secretAccessKey: string,
-): S3Client {
-	return new S3Client({
-		region: env.S3_REGION,
-		endpoint,
-		credentials: { accessKeyId, secretAccessKey },
-		forcePathStyle: true,
-		requestChecksumCalculation: "WHEN_REQUIRED",
-		responseChecksumValidation: "WHEN_REQUIRED",
-	});
-}
-
 export function getS3Client(): S3Client {
 	if (!env.S3_ENDPOINT || !env.S3_ACCESS_KEY_ID || !env.S3_SECRET_ACCESS_KEY) {
 		throw new Error(
@@ -31,11 +11,15 @@ export function getS3Client(): S3Client {
 		);
 	}
 	if (!_client) {
-		_client = createClient(
-			env.S3_ENDPOINT,
-			env.S3_ACCESS_KEY_ID,
-			env.S3_SECRET_ACCESS_KEY,
-		);
+		_client = new S3Client({
+			region: env.S3_REGION,
+			endpoint: env.S3_ENDPOINT,
+			credentials: {
+				accessKeyId: env.S3_ACCESS_KEY_ID,
+				secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+			},
+			forcePathStyle: true,
+		});
 	}
 	return _client;
 }
@@ -61,11 +45,15 @@ export function getPresignClient(): S3Client {
 		);
 	}
 	if (!_presignClient) {
-		_presignClient = createClient(
-			env.S3_PUBLIC_ENDPOINT,
-			env.S3_ACCESS_KEY_ID,
-			env.S3_SECRET_ACCESS_KEY,
-		);
+		_presignClient = new S3Client({
+			region: env.S3_REGION,
+			endpoint: env.S3_PUBLIC_ENDPOINT,
+			credentials: {
+				accessKeyId: env.S3_ACCESS_KEY_ID,
+				secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+			},
+			forcePathStyle: true,
+		});
 	}
 	return _presignClient;
 }

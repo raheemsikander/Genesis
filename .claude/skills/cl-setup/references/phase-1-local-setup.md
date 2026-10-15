@@ -93,7 +93,8 @@ If "Docker not running", tell the engineer to open Docker Desktop and wait for t
 
 `pnpm run setup` is the **single first-run bootstrap**. It does four things in sequence:
 1. Copies `.env.example` → `.env` for both apps (skipped if `.env` already exists)
-2. Starts Postgres / Redis / Garage via Docker Compose, waits for healthy (Garage creates the `file-uploads` bucket itself before it reports healthy)
+2. Starts Postgres / Redis / MinIO via Docker Compose, waits for healthy
+3. Creates the `file-uploads` MinIO bucket via the `minio-init` one-shot container (this is no longer a manual UI step)
 4. Runs all pending Drizzle migrations
 
 **Verify all four worked:**
@@ -103,7 +104,7 @@ always the directory name. Resolve it first, then pass it to `docker compose -p`
 
 ```bash
 COMPOSE=$(pnpm sandbox --json | jq -r .composeProjects.dev)                          # e.g. genesis-2 (slot 0) or genesis-s1
-docker compose -p "$COMPOSE" ps                                                      # postgres, redis, garage all healthy
+docker compose -p "$COMPOSE" ps                                                      # postgres, redis, minio all healthy
 ls apps/server/.env apps/web/.env                                                    # both .env files exist
 docker exec -i $(docker compose -p "$COMPOSE" ps -q postgres) sh -c \
   'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "\dt"' 2>/dev/null | head -20       # migration + app tables exist
@@ -113,7 +114,7 @@ The `\dt` output should list at least `users` and `files` plus the migration tra
 
 **Port 5433 in use:** `lsof -i :5433`. The dev DB publishes to host port 5433 (slot 0) to dodge a host PostgreSQL on 5432. The `ports:` mappings in `docker-compose.yml` are env-substituted from the sandbox slot, so don't hand-edit them: run `pnpm sandbox` to see which ports this checkout owns, and check whether another sandbox slot already holds the one that collides. See `docs/engineering/parallel-sandboxes.md`.
 
-**Garage won't start or storage calls fail:** `docker compose -p "$COMPOSE" logs garage`. `Access key ... is associated with a secret key different than the one given` means the volume was created with another secret: `pnpm infra:down --volumes` resets local storage. A `.env` still holding the old MinIO credentials (`genesis` / `genesis123`) fails every call; set `S3_ACCESS_KEY_ID=genesis-dev-key` and `S3_SECRET_ACCESS_KEY=genesis-dev-secret-key`.
+**MinIO bucket missing:** If `pnpm run setup` finished but the `file-uploads` bucket isn't there, the `minio-init` container errored. Re-run `pnpm run setup`, or just the bucket step with `zx scripts/sandbox.ts infra bucket-init` from the repo root. It is gated behind the `init` profile so a plain `pnpm infra:up` won't re-trigger it.
 
 **`pnpm run setup` is idempotent** and safe to re-run, with one caveat: it never overwrites existing `.env` files, and if their ports no longer match the worktree's sandbox slot the env preflight stops it (fix the named ports in place, or delete both `.env` files and re-run). Day-to-day after first setup, only `pnpm infra:up` (start containers) and `pnpm dev` (start app) are needed.
 

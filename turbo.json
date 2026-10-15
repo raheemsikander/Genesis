@@ -9,7 +9,8 @@
 		"POSTGRES_PORT",
 		"TEST_POSTGRES_PORT",
 		"REDIS_PORT",
-		"GARAGE_PORT"
+		"MINIO_PORT",
+		"MINIO_CONSOLE_PORT"
 	],
 	"tasks": {
 		"build": {

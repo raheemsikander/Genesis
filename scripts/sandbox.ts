@@ -226,8 +226,10 @@ function slotEnv(
 		TEST_POSTGRES_PORT: String(ports.testPostgres),
 		REDIS_PORT: String(ports.redis),
 		TEST_REDIS_PORT: String(ports.testRedis),
-		GARAGE_PORT: String(ports.s3),
-		TEST_GARAGE_PORT: String(ports.testS3),
+		MINIO_PORT: String(ports.minio),
+		MINIO_CONSOLE_PORT: String(ports.minioConsole),
+		TEST_MINIO_PORT: String(ports.testMinio),
+		TEST_MINIO_CONSOLE_PORT: String(ports.testMinioConsole),
 		/**
 		 * Exported for both kinds because the test database has always been
 		 * wrapper-owned: it is an ephemeral stack with credentials fixed by
@@ -299,13 +301,14 @@ function printInfo(
 		urls: {
 			server: `http://localhost:${ports.server}`,
 			web: `http://localhost:${ports.web}`,
+			minioConsole: `http://localhost:${ports.minioConsole}`,
 		},
 		connectionStrings: {
 			database: `postgresql://genesis:genesis@localhost:${ports.postgres}/genesis`,
 			testDatabase: testDatabaseUrl(ports),
 			redis: `redis://localhost:${ports.redis}`,
 			testRedis: testRedisUrl(ports),
-			s3: `http://localhost:${ports.s3}`,
+			s3: `http://localhost:${ports.minio}`,
 			testS3: testS3Endpoint(ports),
 		},
 		composeProjects: {
@@ -323,7 +326,9 @@ function printInfo(
 	console.log(`  postgres ${info.connectionStrings.database}`);
 	console.log(`  test db  ${info.connectionStrings.testDatabase}`);
 	console.log(`  redis    ${info.connectionStrings.redis}`);
-	console.log(`  s3       ${info.connectionStrings.s3}`);
+	console.log(
+		`  minio    ${info.connectionStrings.s3} (console ${info.urls.minioConsole})`,
+	);
 	console.log(
 		`  test infra  redis ${info.connectionStrings.testRedis}  s3 ${info.connectionStrings.testS3}`,
 	);
@@ -468,6 +473,18 @@ switch (command) {
 				],
 				slotEnv(slot, ports, "test", product),
 			);
+		} else if (sub === "bucket-init") {
+			run(
+				[
+					"docker",
+					"compose",
+					...composeArgs(slot, "dev", product),
+					"run",
+					"--rm",
+					"minio-init",
+				],
+				slotEnv(slot, ports, "dev", product),
+			);
 		} else {
 			throw new Error(`sandbox infra: unknown subcommand "${sub ?? ""}"`);
 		}
@@ -484,6 +501,18 @@ switch (command) {
 			env,
 		);
 		if (upStatus !== 0) process.exit(upStatus);
+		const bucketStatus = runToCompletion(
+			[
+				"docker",
+				"compose",
+				...composeArgs(slot, "test", product),
+				"run",
+				"--rm",
+				"test-minio-init",
+			],
+			env,
+		);
+		if (bucketStatus !== 0) process.exit(bucketStatus);
 		run(["pnpm", "--filter", "server", "test:integration", ...rest], env);
 		break;
 	}

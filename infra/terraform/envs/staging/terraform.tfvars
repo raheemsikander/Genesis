@@ -7,11 +7,7 @@ web_service_plan = "free"
 worker_plan      = "starter"
 enable_worker    = false
 service_enabled  = true
-enable_r2        = false
-
-# Keep the domain Vercel assigned when staging was first provisioned so the
-# frontend URL and CORS_ORIGIN survive the rebuild of Terraform state.
-frontend_domain = "genesis-staging-5d62c8.vercel.app"
+enable_r2        = true
 
 # project_name + repo_url + branch (per env) live in envs/shared/terraform.tfvars
 # and are read here via terraform_remote_state. Sensitive values (Clerk, Resend,

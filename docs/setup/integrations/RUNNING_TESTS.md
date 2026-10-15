@@ -9,7 +9,7 @@ This document covers how to run the full test suite locally. Read [`LOCAL_ENV.md
 | Suite | Command | What it tests | Infrastructure needed |
 |-------|---------|---------------|----------------------|
 | Server unit | `pnpm test:server:unit` | Business logic, utilities, handlers (mocked DB) | None |
-| Server integration | `pnpm test:server:integration` | Full request flow against a real database, cache, and object store | Test Postgres, Redis, and Garage (all ephemeral), auto-started |
+| Server integration | `pnpm test:server:integration` | Full request flow against a real database, cache, and object store | Test Postgres, Redis, and MinIO (all ephemeral), auto-started |
 | Web unit | `pnpm test:web` | React components, hooks, utilities | None (jsdom) |
 | E2E | `pnpm test:e2e` | Full browser flow through the running app | Both dev servers + Playwright browsers |
 
@@ -35,17 +35,17 @@ No database or external services needed — these tests mock the database layer.
 
 ## Step 2: Set up the test infrastructure
 
-Integration tests run against a real Postgres database, a real Redis instance, and a real Garage bucket, all separate from your development stack. The test command automatically starts and initializes this stack, but you can also manage it manually:
+Integration tests run against a real Postgres database, a real Redis instance, and a real MinIO bucket, all separate from your development stack. The test command automatically starts and initializes this stack, but you can also manage it manually:
 
 ```bash
-pnpm infra:test:up      # Start test Postgres, Redis, and Garage (auto-runs before integration tests)
+pnpm infra:test:up      # Start test Postgres, Redis, and MinIO (auto-runs before integration tests)
 pnpm infra:test:down    # Stop the test stack
 ```
 
-This starts, on the sandbox slot's test ports (slot 0 shown, separate from the dev stack on 5433/6379/9000):
+This starts, on the sandbox slot's test ports (slot 0 shown, separate from the dev stack on 5433/6379/9000/9001):
 - **Postgres** on **5434**: database `genesis_test`, user `postgres`, password `postgres`.
 - **Redis** on **6380**.
-- **Garage** on **9002** (S3 API), which creates the test bucket itself before it reports healthy.
+- **MinIO** on **9002** (API) and **9003** (console).
 
 Verify it's running:
 
@@ -75,7 +75,7 @@ pnpm test:server:integration
 
 Integration tests use a global setup file (`vitest.global-setup.ts`) that handles schema creation against the test database automatically.
 
-Running vitest directly (`pnpm --filter server test:integration`) is refused: without the wrapper's exports, the safety check in `vitest.global-setup.ts` throws rather than letting the run connect to your dev Redis and Garage.
+Running vitest directly (`pnpm --filter server test:integration`) is refused: without the wrapper's exports, the safety check in `vitest.global-setup.ts` throws rather than letting the run connect to your dev Redis and MinIO.
 
 **Troubleshooting:**
 

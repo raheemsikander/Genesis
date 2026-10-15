@@ -12,9 +12,11 @@
  *   2. Copies apps/server/.env.example -> apps/server/.env (if missing),
  *      rewriting ports for the resolved slot.
  *   3. Copies apps/web/.env.example -> apps/web/.env (if missing), same way.
- *   4. Starts local infrastructure (`pnpm infra:up`): Postgres, Redis, and
- *      Garage, which creates the `file-uploads` bucket itself on first boot.
- *   5. Runs database migrations (`pnpm db:migrate`).
+ *   4. Starts local infrastructure (`pnpm infra:up`): Postgres, Redis, MinIO.
+ *   5. Runs the `minio-init` one-shot container to create the `file-uploads`
+ *      bucket (gated behind the `init` compose profile), via the sandbox CLI
+ *      so it targets this slot's compose project.
+ *   6. Runs database migrations (`pnpm db:migrate`).
  *
  * After this, the only thing left to do is fill in the Clerk keys in the
  * generated .env files, then `pnpm dev`.
@@ -61,12 +63,24 @@ async function ensureEnvFiles(slot: number) {
 
 async function startInfra() {
 	const s = spinner();
-	s.start("Starting Postgres, Redis, Garage…");
+	s.start("Starting Postgres, Redis, MinIO…");
 	try {
 		await $`pnpm infra:up`;
 		s.stop("Infrastructure ready.");
 	} catch (err) {
 		s.stop("Infrastructure failed to start.");
+		throw err;
+	}
+}
+
+async function createMinioBucket() {
+	const s = spinner();
+	s.start("Creating MinIO bucket…");
+	try {
+		await $`zx scripts/sandbox.ts infra bucket-init`;
+		s.stop("MinIO bucket ready.");
+	} catch (err) {
+		s.stop("MinIO bucket creation failed.");
 		throw err;
 	}
 }
@@ -91,6 +105,7 @@ log.info(
 );
 const createdEnvs = await ensureEnvFiles(slot);
 await startInfra();
+await createMinioBucket();
 await runMigrations();
 
 outro(

@@ -1,6 +1,6 @@
 terraform {
   cloud {
-    organization = "conradlabs"
+    organization = "project-genesis"
 
     workspaces {
       name = "genesis-production"

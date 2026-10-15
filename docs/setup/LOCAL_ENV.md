@@ -80,7 +80,7 @@ The app itself runs outside Docker. Docker Compose only provides the backing ser
 
 > **Database credentials:** The PostgreSQL username, password, and database name are defined in `docker-compose.yml`. Use these to connect with external tools like DBeaver.
 
-> **Why port 5433?** Postgres's default port (5432) is often already taken by a system-installed Postgres, so we map the container to **5433** by default. The ephemeral test stack uses **5434** for the same reason (`docker-compose.test.yml`), plus **6380** for Redis and **9002** for Garage. Every one of these is the slot-0 default and is env-substituted from the sandbox slot, so if they collide on your machine, take a different slot rather than hand-editing the compose files. See [`parallel-sandboxes.md`](../engineering/parallel-sandboxes.md).
+> **Why port 5433?** Postgres's default port (5432) is often already taken by a system-installed Postgres, so we map the container to **5433** by default. The ephemeral test stack uses **5434** for the same reason (`docker-compose.test.yml`), plus **6380** for Redis and **9002**/**9003** for MinIO. Every one of these is the slot-0 default and is env-substituted from the sandbox slot, so if they collide on your machine, take a different slot rather than hand-editing the compose files. See [`parallel-sandboxes.md`](../engineering/parallel-sandboxes.md).
 
 Open **Docker Desktop** first and wait for it to fully start (the whale icon in your menu bar should stop animating). Then from the project root:
 
@@ -91,7 +91,8 @@ pnpm run setup
 This single command does the first-run bootstrap:
 
 1. Copies `apps/server/.env.example` → `apps/server/.env` and `apps/web/.env.example` → `apps/web/.env` (skipped if they already exist)
-2. Starts the local infrastructure containers (Postgres, Redis, Garage) and waits for them to be healthy. Garage creates the `file-uploads` bucket itself on first boot, so a bare `pnpm infra:up` is enough on its own
+2. Starts the local infrastructure containers (Postgres, Redis, MinIO) and waits for them to be healthy
+3. Creates the `file-uploads` MinIO bucket by running the `minio-init` one-shot container (gated behind the `init` compose profile, so a bare `pnpm infra:up` does not run it; `pnpm run setup` invokes it explicitly for this checkout's sandbox slot, and `zx scripts/sandbox.ts infra bucket-init` re-runs just that step)
 4. Runs all pending database migrations
 
 `pnpm run setup` is idempotent and safe to re-run, with one caveat: it never overwrites existing `.env` files, and if their ports no longer match the worktree's sandbox slot the env preflight stops it (fix the named ports in place, or delete both `.env` files and re-run). Day-to-day after the first run, you only need `pnpm infra:up` (to start the docker services) and `pnpm dev` (to start the app).
@@ -100,7 +101,7 @@ This single command does the first-run bootstrap:
 |---------|-----|---------|
 | PostgreSQL 16 | `localhost:5433` | Main database |
 | Redis 7 | `localhost:6379` | Background job queue |
-| Garage | `localhost:9000` (S3 API, no web console) | Local S3-compatible file storage; creates the `file-uploads` bucket on first boot. Inspect with `docker compose exec garage /garage bucket info file-uploads` |
+| MinIO | `localhost:9000` (console at `:9001`) | Local S3-compatible file storage; `file-uploads` bucket created during `pnpm run setup` |
 
 ---
 
@@ -116,8 +117,8 @@ This single command does the first-run bootstrap:
 | `CLERK_SECRET_KEY` | [Clerk Dashboard](https://dashboard.clerk.com) → your app → **API Keys** |
 | `DATABASE_URL` | Pre-filled to match `docker-compose.yml` — no changes needed |
 | `REDIS_URL` | Pre-filled to `redis://localhost:6379` — no changes needed |
-| `S3_*` vars | Pre-filled to match the local Garage container — no changes needed |
-| `S3_PUBLIC_ENDPOINT` | Optional. When testing file uploads/downloads from a **physical device** (phone, tablet), set this to your machine's LAN IP storage URL (e.g. `http://192.168.1.10:9000`). Presigned GET URLs are signed against this host; leave blank on desktop-only dev. |
+| `S3_*` vars | Pre-filled to match the local MinIO container — no changes needed |
+| `S3_PUBLIC_ENDPOINT` | Optional. When testing file uploads/downloads from a **physical device** (phone, tablet), set this to your machine's LAN IP MinIO URL (e.g. `http://192.168.1.10:9000`). Presigned GET URLs are signed against this host; leave blank on desktop-only dev. |
 | `RESEND_API_KEY` / `RESEND_FROM_EMAIL` | [Resend Dashboard](https://resend.com) → **API Keys** (optional — leave blank to disable email) |
 
 ### Web (`apps/web/.env`)
@@ -216,16 +217,6 @@ The mobile app is **local-only** today — it has no Render/Vercel/Terraform dep
 - **Running tests:** The test suite needs additional setup beyond `pnpm install` — a separate test database and (for E2E) Playwright browsers. See [Running tests locally](integrations/RUNNING_TESTS.md) before opening your first PR.
 - **Apollo plugin (optional):** If you use Claude Code, see [Setting up the Apollo plugin](integrations/APOLLO.md) to install `apollo` for feature/fix/PR workflows.
 - **BullMQ dashboard:** http://localhost:3000/admin/jobs — inspect queues, jobs, and failures. Requires you to be signed in as a user with `role: admin` (set via Clerk's `unsafeMetadata`); members get a 403. The dashboard is only mounted when `NODE_ENV=development`; it is off in `test`, `staging`, and `production`. Exposing it in any deployed environment requires loosening the gate in `apps/server/src/index.ts` after ops sign-off.
-
----
-
-## Upgrading from MinIO (one-time)
-
-Local storage used to be MinIO, whose images have been withdrawn from every public registry. If your checkout predates the switch to Garage:
-
-1. In `apps/server/.env`, set `S3_ACCESS_KEY_ID=genesis-dev-key` and `S3_SECRET_ACCESS_KEY=genesis-dev-secret-key`. Garage rejects key IDs under 8 characters and secrets under 16, so the old `genesis` / `genesis123` fail every storage call.
-2. Remove the old MinIO container, which still holds this slot's storage port: `pnpm infra:down`, then `docker compose -p "$(pnpm -s sandbox --json | jq -r .composeProjects.dev)" down --remove-orphans`, then `pnpm infra:up`.
-3. Optional: delete the old local files. `docker volume ls --filter name=minio_data` lists the old volumes (one per checkout's compose project), and `docker volume rm <name>` removes one. Nothing migrates them, so local uploads start empty.
 
 ---
 

@@ -66,7 +66,7 @@ Steps that are always manual (cannot be automated):
 - Disabling Clerk Client Trust on the dev instance (required for E2E in Phase 2)
 - Creating Clerk test users for E2E
 
-The storage bucket is **not** in this list — the local Garage container creates `file-uploads` itself on first boot. Older runbooks that mention MinIO, `minio-init`, or "create the bucket via the MinIO console" are stale.
+The MinIO bucket is **not** in this list — `pnpm run setup` runs the `minio-init` container to create it automatically. Older runbooks that say "create the bucket via the MinIO console" are stale.
 
 ## Interaction Pattern
 
