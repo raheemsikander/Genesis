@@ -1,0 +1,14 @@
+version: 2
+projectIgnorePaths:
+  - "docs/**"
+  - "scripts/**"
+issueRules:
+  installScripts: true
+  networkAccess: true
+  shellAccess: true
+  filesystemAccess: true
+  envVars: true
+  obfuscatedCode: true
+githubApp:
+  enabled: true
+  dependencyOverviewEnabled: true

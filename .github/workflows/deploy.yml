@@ -1,0 +1,84 @@
+name: Deploy
+
+on:
+  push:
+    # Runs when a PR is merged into following branches:
+    branches: [main, develop]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: ./.github/actions/setup
+
+      # -------------------------------------------------------------------------
+      # Run database migrations against the target environment's database.
+      # This runs BEFORE the deploy so the schema is ready for the new code.
+      # Secret is scoped to the GitHub Environment — same name across all envs.
+      # -------------------------------------------------------------------------
+      - name: Run database migrations
+        run: pnpm db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      # -------------------------------------------------------------------------
+      # Trigger a Render deploy via the Render REST API.
+      # autoDeploy is disabled, so deploys only happen here.
+      # Secrets are scoped to the GitHub Environment — same names across all envs.
+      # -------------------------------------------------------------------------
+      - name: Trigger Render API deploy
+        run: |
+          http_code=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            "https://api.render.com/v1/services/${{ secrets.RENDER_API_SERVICE_ID }}/deploys")
+          if [[ ! "$http_code" =~ ^2[0-9][0-9]$ ]]; then
+            echo "::error::Render API deploy failed with HTTP $http_code"
+            exit 1
+          fi
+          echo "Deploy triggered (HTTP $http_code)"
+
+      # -------------------------------------------------------------------------
+      # Trigger a Render deploy for the worker service via the REST API.
+      # The worker runs BullMQ background/scheduled jobs in a separate process.
+      # Secrets are scoped to the GitHub Environment — same names across all envs.
+      # To enable: uncomment this step (and enable the worker in Terraform).
+      # -------------------------------------------------------------------------
+      # - name: Trigger Render worker deploy
+      #   run: |
+      #     http_code=$(curl -s -o /dev/null -w "%{http_code}" \
+      #       -X POST \
+      #       -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+      #       -H "Content-Type: application/json" \
+      #       "https://api.render.com/v1/services/${{ secrets.RENDER_WORKER_SERVICE_ID }}/deploys")
+      #     if [[ ! "$http_code" =~ ^2[0-9][0-9]$ ]]; then
+      #       echo "::error::Render worker API deploy failed with HTTP $http_code"
+      #       exit 1
+      #     fi
+      #     echo "Worker deploy triggered (HTTP $http_code)"
+
+      # -------------------------------------------------------------------------
+      # Source maps are uploaded to Rollbar during Vercel's build step
+      # (see apps/web/scripts/build-with-sourcemaps.sh). This ensures the maps
+      # match the exact chunk hashes of the deployed build.
+      # Required Vercel env vars: ROLLBAR_CLIENT_SOURCEMAP_TOKEN, DEPLOY_URL.
+      # -------------------------------------------------------------------------
+
+      # -------------------------------------------------------------------------
+      # Trigger a Vercel deploy for the frontend app.
+      # Auto-deploy is disabled via apps/web/vercel.json, so deploys only happen here.
+      # Secret is scoped to the GitHub Environment — same name across all envs.
+      # -------------------------------------------------------------------------
+      - name: Trigger Vercel deploy
+        run: |
+          http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}")
+          if [[ ! "$http_code" =~ ^2[0-9][0-9]$ ]]; then
+            echo "::error::Vercel deploy hook failed with HTTP $http_code"
+            exit 1
+          fi
+          echo "Vercel deploy triggered (HTTP $http_code)"
