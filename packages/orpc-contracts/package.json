@@ -1,0 +1,22 @@
+{
+	"name": "@repo/orpc-contracts",
+	"type": "module",
+	"exports": {
+		".": {
+			"default": "./src/index.ts"
+		}
+	},
+	"scripts": {
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@repo/shared": "workspace:*",
+		"@orpc/client": "catalog:",
+		"@orpc/contract": "catalog:",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"typescript": "catalog:",
+		"vitest": "^4.1.4"
+	}
+}
