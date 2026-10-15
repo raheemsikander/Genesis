@@ -46,7 +46,7 @@
 		"@biomejs/biome": "^2.4.11",
 		"@clack/prompts": "^1.2.0",
 		"@clerk/testing": "^2.0.13",
-		"@commitlint/config-conventional": "^20.5.0",
+		"@commitlint/config-conventional": "^21.2.3",
 		"@tailwindcss/postcss": "^4.2.2",
 		"@tanstack/react-query-devtools": "catalog:",
 		"@types/node": "catalog:",
