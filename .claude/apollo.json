@@ -1,0 +1,35 @@
+{
+	"$schema": "https://raw.githubusercontent.com/Conrad-Labs/olympus/main/schemas/config.v1.json",
+	"version": 1,
+	"git": {
+		"defaultBranch": "develop",
+		"branchFormat": {
+			"pattern": "^[a-z]+-[0-9]+-[a-z0-9]+(-[a-z0-9]+)*$",
+			"example": "genesis-150-automate-render-terraform",
+			"description": "<prefix>-<ticket-number>-<short-description>"
+		}
+	},
+	"tickets": {
+		"provider": "github",
+		"pipeline": [
+			{ "status": "planning", "on": "planningStarted" },
+			{ "status": "ready-for-dev", "on": "planApproved" },
+			{ "status": "ready-to-deploy", "on": "qaPassed" }
+		]
+	},
+	"conventions": {
+		"commitConfigPath": "commitlint.config.js",
+		"planDocsPath": "docs/plans"
+	},
+	"commands": {
+		"lint": "pnpm check",
+		"build": ["pnpm check-types", "pnpm build"],
+		"test": ["pnpm test:server:unit", "pnpm test:server:integration"]
+	},
+	"workflow": {
+		"brainstorm": true,
+		"codeReview": true,
+		"simplify": true,
+		"claudeMdRevision": true
+	}
+}
