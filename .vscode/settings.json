@@ -1,0 +1,36 @@
+{
+	"cSpell.words": ["bullmq", "carryforward", "ORPC", "svix"],
+
+	"editor.formatOnSave": true,
+	"editor.defaultFormatter": "biomejs.biome",
+	"editor.codeActionsOnSave": {
+		"source.fixAll.biome": "explicit",
+		"source.organizeImports.biome": "explicit"
+	},
+
+	"javascript.format.enable": false,
+	"typescript.format.enable": false,
+	"css.format.enable": false,
+
+	"editor.tabSize": 2,
+	"editor.insertSpaces": false,
+	"editor.detectIndentation": false,
+
+	"typescript.tsdk": "node_modules/typescript/lib",
+	"typescript.enablePromptUseWorkspaceTsdk": true,
+
+	"search.exclude": {
+		"**/.next": true,
+		"**/.turbo": true,
+		"**/dist": true,
+		"**/node_modules": true
+	},
+
+	"files.eol": "\n",
+	"files.trimTrailingWhitespace": true,
+	"files.insertFinalNewline": true,
+
+	"files.associations": {
+		".env.*": "dotenv"
+	}
+}
