@@ -20,7 +20,7 @@
 		"date-fns": "catalog:",
 		"expo": "~56.0.8",
 		"expo-auth-session": "~56.0.13",
-		"expo-build-properties": "~56.0.19",
+		"expo-build-properties": "~57.0.22",
 		"expo-constants": "~56.0.16",
 		"expo-document-picker": "~56.0.4",
 		"expo-font": "~56.0.5",
