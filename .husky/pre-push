@@ -1,0 +1,27 @@
+branch=$(git symbolic-ref --short HEAD)
+
+if [ "$branch" = "main" ] || [ "$branch" = "develop" ]; then
+  exit 0
+fi
+
+# Allow automated/bot-created branches
+case "$branch" in
+  dependabot/*|release/*|hotfix/*)
+    exit 0
+    ;;
+esac
+
+pattern="^[a-z]+-[0-9]+-[a-z0-9]+(-[a-z0-9]+)*$"
+
+if ! printf '%s\n' "$branch" | grep -qE "$pattern"; then
+  echo ""
+  echo "ERROR: Branch name '$branch' does not follow the naming convention."
+  echo ""
+  echo "  Pattern:  prefix-number-short-description"
+  echo "  Example:  project-45-create-admin-views"
+  echo ""
+  echo "Branch names must be lowercase, hyphenated, and start with a lowercase"
+  echo "prefix, followed by a numeric ticket ID and a short description."
+  echo ""
+  exit 1
+fi
