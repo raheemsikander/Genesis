@@ -122,7 +122,7 @@ export async function softDeleteFile(dbUser: DbUser, input: { uuid: string }) {
 		});
 	}
 
-	// Soft-delete the metadata row first: if this fails, S3 is untouched and recoverable
+	// Soft-delete the metadata row first — if this fails, S3 is untouched and recoverable
 	await db
 		.update(files)
 		.set({

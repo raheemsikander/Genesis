@@ -40,30 +40,8 @@ jobs:
       - name: Run Server Unit Tests
         run: pnpm --filter server test:unit --coverage
 
-      # Compose (not a job service) because Garage needs a `command` and a
-      # mounted config file. `--wait` returns once Garage has applied its
-      # layout and created the test key and bucket, so S3 is usable right after.
-      - name: Start Garage
-        run: docker compose -f docker-compose.test.yml up -d --wait test-garage
-
       - name: Run Server Integration Tests
-        env:
-          # Must match test-garage in docker-compose.test.yml.
-          S3_ENDPOINT: http://localhost:9002
-          S3_ACCESS_KEY_ID: test-access-key
-          S3_SECRET_ACCESS_KEY: test-secret-key-local
-          # env.ts skips validation when CI is true, so the Zod defaults for
-          # these two never apply and the bucket would reach the SDK undefined.
-          S3_BUCKET: file-uploads
-          S3_REGION: us-east-1
-          # Opts out of the global-setup check that guards a developer's own
-          # stack; these containers are throwaway.
-          GENESIS_TEST_INFRA: 1
         run: pnpm --filter server test:integration --coverage
-
-      - name: Stop Garage
-        if: always()
-        run: docker compose -f docker-compose.test.yml down
 
       - name: Upload unit test coverage to Codecov
         if: ${{ env.CODECOV_TOKEN != '' && !contains(github.event.pull_request.labels.*.name, 'skip-coverage-check') }}

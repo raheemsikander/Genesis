@@ -48,7 +48,6 @@
 		"zod": "catalog:"
 	},
 	"devDependencies": {
-		"@orpc/client": "catalog:",
 		"@types/cors": "^2.8.17",
 		"@types/express": "catalog:",
 		"@types/node": "catalog:",

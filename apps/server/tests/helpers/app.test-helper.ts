@@ -2,7 +2,7 @@ import { RPCHandler } from "@orpc/server/node";
 import express from "express";
 import type { Test } from "supertest";
 import { appRouter, createAuthContext } from "../../src/orpc";
-import { TEST_AUTH_HEADER, TEST_CLERK_USER_ID } from "./auth.test-helper";
+import { TEST_CLERK_USER_ID } from "./auth.test-helper";
 
 export function createTestApp(): express.Express {
 	const app = express();
@@ -30,5 +30,5 @@ export function createTestApp(): express.Express {
 }
 
 export function withAuth(req: Test, userId: string = TEST_CLERK_USER_ID): Test {
-	return req.set(TEST_AUTH_HEADER, userId);
+	return req.set("x-test-user-id", userId);
 }

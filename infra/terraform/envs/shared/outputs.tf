@@ -23,7 +23,7 @@ output "vercel_project_id" {
 
 output "vercel_deploy_hooks" {
   value = {
-    for h in coalesce(vercel_project.main.git_repository.deploy_hooks, []) : h.name => {
+    for h in vercel_project.main.git_repository.deploy_hooks : h.name => {
       id  = h.id
       url = h.url
     }

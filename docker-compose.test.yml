@@ -39,28 +39,42 @@ services:
       timeout: 5s
       retries: 5
 
-  test-garage:
-    # Bootstraps its own layout, key and the app's bucket before it reports
-    # healthy, so `up --wait` is the whole storage setup. The bucket is the
-    # app's S3_BUCKET default; a fork that renames it in .env must export
-    # S3_BUCKET so the test stack creates the same one.
-    image: dxflrs/garage:v2.4.1@sha256:9c96caa2612d3411acc5b0e6701fb238dbfba33e533a6d7d3d811a4b12d0d020
-    command: ["/garage", "server", "--single-node", "--default-bucket"]
+  test-minio:
+    image: minio/minio
     ports:
-      - "${TEST_GARAGE_PORT:-9002}:3900"
+      - "${TEST_MINIO_PORT:-9002}:9000"
+      - "${TEST_MINIO_CONSOLE_PORT:-9003}:9001"
     environment:
-      # Must match TEST_S3_CREDENTIALS in scripts/lib/sandbox-core.ts. Neither
-      # value contains the product name, so scripts/rename.ts leaves both alone.
-      GARAGE_DEFAULT_ACCESS_KEY: test-access-key
-      GARAGE_DEFAULT_SECRET_KEY: test-secret-key-local
-      GARAGE_DEFAULT_BUCKET: "${S3_BUCKET:-file-uploads}"
-      RUST_LOG: garage=info,garage_net=warn,garage_api_admin=warn
-    volumes:
-      - ./infra/garage/garage.toml:/etc/garage.toml:ro
-    healthcheck:
-      test: ["CMD", "/garage", "health"]
-      interval: 1s
-      timeout: 5s
-      retries: 30
+      MINIO_ROOT_USER: genesis
+      MINIO_ROOT_PASSWORD: genesis123
+    command: server /data --console-address ":9001"
     tmpfs:
-      - /var/lib/garage
+      - /data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 2s
+      timeout: 5s
+      retries: 5
+
+  # Gated behind the `init` profile so it does not start with `up` (services
+  # with profiles are excluded). pnpm test:server:integration runs it
+  # explicitly once the stack is healthy, matching the dev stack's minio-init.
+  test-minio-init:
+    image: minio/mc
+    profiles: ["init"]
+    restart: "no"
+    depends_on:
+      test-minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: genesis
+      MINIO_ROOT_PASSWORD: genesis123
+      # Matches the app's S3_BUCKET default. A fork that renames the bucket in
+      # .env must export S3_BUCKET so the test stack creates the same one.
+      S3_BUCKET: "${S3_BUCKET:-file-uploads}"
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://test-minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD} &&
+      mc mb --ignore-existing local/$${S3_BUCKET} &&
+      echo 'Test MinIO bucket '$${S3_BUCKET}' ready.'
+      "

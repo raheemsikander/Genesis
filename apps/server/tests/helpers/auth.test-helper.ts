@@ -2,13 +2,10 @@ import { vi } from "vitest";
 
 export const TEST_CLERK_USER_ID = "user_test_clerk_123";
 
-/** The header the mocked getAuth below reads the caller's identity from. */
-export const TEST_AUTH_HEADER = "x-test-user-id";
-
 vi.mock("@clerk/express", () => ({
 	clerkMiddleware: () => (_req: any, _res: any, next: any) => next(),
 	getAuth: (req: any) => ({
-		userId: req.headers[TEST_AUTH_HEADER] || null,
+		userId: req.headers["x-test-user-id"] || null,
 	}),
 	clerkClient: {
 		users: {

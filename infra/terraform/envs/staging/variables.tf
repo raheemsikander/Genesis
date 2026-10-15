@@ -182,12 +182,6 @@ variable "next_public_mixpanel_token" {
   default   = ""
 }
 
-variable "next_public_ga4_measurement_id" {
-  type      = string
-  sensitive = false
-  default   = ""
-}
-
 # =============================================================================
 # Vercel platform options
 # =============================================================================

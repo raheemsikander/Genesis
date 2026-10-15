@@ -13,7 +13,6 @@ export const env = createEnv({
 		NEXT_PUBLIC_CLERK_SIGN_UP_URL: z.string().min(1),
 		NEXT_PUBLIC_ROLLBAR_CLIENT_TOKEN: z.string().min(1).optional(),
 		NEXT_PUBLIC_MIXPANEL_TOKEN: z.string().min(1).optional(),
-		NEXT_PUBLIC_GA4_MEASUREMENT_ID: z.string().min(1).optional(),
 	},
 	runtimeEnv: {
 		NEXT_PUBLIC_NODE_ENV: process.env.NEXT_PUBLIC_NODE_ENV,
@@ -25,7 +24,6 @@ export const env = createEnv({
 		NEXT_PUBLIC_ROLLBAR_CLIENT_TOKEN:
 			process.env.NEXT_PUBLIC_ROLLBAR_CLIENT_TOKEN,
 		NEXT_PUBLIC_MIXPANEL_TOKEN: process.env.NEXT_PUBLIC_MIXPANEL_TOKEN,
-		NEXT_PUBLIC_GA4_MEASUREMENT_ID: process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID,
 	},
 	skipValidation: process.env.CI === "true",
 	emptyStringAsUndefined: true,

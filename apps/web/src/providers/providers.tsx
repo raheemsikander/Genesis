@@ -10,7 +10,6 @@ import { env } from "../utils/env";
 import { rollbarConfig } from "../utils/rollbar";
 import { queryClient } from "../utils/tanstack-query";
 
-import { GoogleAnalyticsProvider } from "./google-analytics-provider";
 import { MixpanelProvider } from "./mixpanel-provider";
 import { ThemeProvider } from "./theme-provider";
 
@@ -37,22 +36,20 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 		<RollbarProvider config={rollbarConfig}>
 			<RollbarUserSync>
 				<MixpanelProvider>
-					<GoogleAnalyticsProvider>
-						<ThemeProvider
-							attribute="class"
-							defaultTheme="system"
-							enableSystem
-							disableTransitionOnChange
-						>
-							<QueryClientProvider client={queryClient}>
-								{children}
-								{env.NEXT_PUBLIC_NODE_ENV === "development" && (
-									<ReactQueryDevtools />
-								)}
-							</QueryClientProvider>
-							<Toaster richColors />
-						</ThemeProvider>
-					</GoogleAnalyticsProvider>
+					<ThemeProvider
+						attribute="class"
+						defaultTheme="system"
+						enableSystem
+						disableTransitionOnChange
+					>
+						<QueryClientProvider client={queryClient}>
+							{children}
+							{env.NEXT_PUBLIC_NODE_ENV === "development" && (
+								<ReactQueryDevtools />
+							)}
+						</QueryClientProvider>
+						<Toaster richColors />
+					</ThemeProvider>
 				</MixpanelProvider>
 			</RollbarUserSync>
 		</RollbarProvider>

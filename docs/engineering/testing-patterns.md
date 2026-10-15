@@ -61,13 +61,13 @@ All backend tests use Vitest. Configuration lives in two files:
 
 ### Integration Test Setup (Real DB)
 
-Integration tests run against a real Postgres database, Redis instance, and Garage bucket, all ephemeral. The test command auto-starts and initializes this stack, but you can also start it manually:
+Integration tests run against a real Postgres database, Redis instance, and MinIO bucket, all ephemeral. The test command auto-starts and initializes this stack, but you can also start it manually:
 
 ```bash
 pnpm infra:test:up
 ```
 
-This starts Postgres, Redis, and Garage on the sandbox slot's test ports (**5434**, **6380**, and **9002** at slot 0, separate from the dev stack). `pnpm test:server:integration` exports the matching connection strings (`TEST_DATABASE_URL`, `REDIS_URL`, `S3_ENDPOINT`, `S3_PUBLIC_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`) for the resolved slot:
+This starts Postgres, Redis, and MinIO on the sandbox slot's test ports (**5434**, **6380**, and **9002**/**9003** at slot 0, separate from the dev stack). `pnpm test:server:integration` exports the matching connection strings (`TEST_DATABASE_URL`, `REDIS_URL`, `S3_ENDPOINT`, `S3_PUBLIC_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`) for the resolved slot:
 
 ```
 TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5434/genesis_test

@@ -1,6 +1,6 @@
 ---
 name: cl-parallel-sandboxes
-description: Use when working in a git worktree of this repo, or when starting infra (pnpm infra:up), dev servers (pnpm dev), integration tests, or Playwright e2e. Every worktree runs in its own sandbox slot with its own ports, containers, and volumes. Trigger before assuming any port number (3000, 3001, 5433, 5434, 6379, 6380, 9000, 9002), before starting a second copy of the app, when a port is already in use, or when setting up a fresh worktree for parallel work.
+description: Use when working in a git worktree of this repo, or when starting infra (pnpm infra:up), dev servers (pnpm dev), integration tests, or Playwright e2e. Every worktree runs in its own sandbox slot with its own ports, containers, and volumes. Trigger before assuming any port number (3000, 3001, 5433, 5434, 6379, 6380, 9000, 9001, 9002, 9003), before starting a second copy of the app, when a port is already in use, or when setting up a fresh worktree for parallel work.
 ---
 
 # Parallel Sandboxes
@@ -14,7 +14,7 @@ checkouts running the numbers you remember from last time will collide.
 
 1. `pnpm install`
 2. `pnpm setup`. Generates slot-aware `.env` files, starts this slot's
-   Postgres/Redis/Garage (Garage creates the bucket itself), runs migrations.
+   Postgres/Redis/MinIO, creates the bucket, runs migrations.
 3. `pnpm dev`
 
 ## Rules

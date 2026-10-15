@@ -1,7 +1,6 @@
 "use client";
 
 import { MOBILE_BREAKPOINT } from "@repo/ui/hooks/use-mobile";
-import { usePathname } from "next/navigation";
 import {
 	createContext,
 	type ReactNode,
@@ -15,7 +14,6 @@ import {
 interface SidebarControlContextType {
 	isPermanentlyExpanded: boolean;
 	handleManualToggle: () => void;
-	closeOnNavigate: () => void;
 }
 
 const SidebarControlContext = createContext<SidebarControlContextType | null>(
@@ -34,8 +32,6 @@ export function SidebarControlProvider({ children }: { children: ReactNode }) {
 	const desktopExpandedRef = useRef<boolean>(true);
 	const isExpandedRef = useRef<boolean>(isPermanentlyExpanded);
 	isExpandedRef.current = isPermanentlyExpanded;
-	// Undefined until the effect below runs, matching useIsMobile's SSR contract.
-	const [isMobile, setIsMobile] = useState<boolean>();
 	useEffect(() => {
 		const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
 		const sync = () => {
@@ -48,33 +44,11 @@ export function SidebarControlProvider({ children }: { children: ReactNode }) {
 				setIsPermanentlyExpanded(desktopExpandedRef.current);
 			}
 			wasMobileRef.current = isMobile;
-			setIsMobile(isMobile);
 		};
 		sync();
 		mql.addEventListener("change", sync);
 		return () => mql.removeEventListener("change", sync);
 	}, []);
-
-	/**
-	 * On mobile the sidebar is a modal overlay, so leaving it open would cover
-	 * the page the user just navigated to. On desktop the expanded state is a
-	 * layout preference that has to survive navigation.
-	 */
-	const closeOnNavigate = useCallback(() => {
-		if (isMobile) setIsPermanentlyExpanded(false);
-	}, [isMobile]);
-
-	/**
-	 * Sidebar links call closeOnNavigate directly, which also covers re-tapping
-	 * the current route. This catches every other navigation source.
-	 */
-	const pathname = usePathname();
-	const lastPathnameRef = useRef(pathname);
-	useEffect(() => {
-		if (isMobile === undefined || lastPathnameRef.current === pathname) return;
-		lastPathnameRef.current = pathname;
-		closeOnNavigate();
-	}, [pathname, isMobile, closeOnNavigate]);
 
 	const handleManualToggle = useCallback(() => {
 		setIsPermanentlyExpanded((prev) => !prev);
@@ -82,7 +56,7 @@ export function SidebarControlProvider({ children }: { children: ReactNode }) {
 
 	return (
 		<SidebarControlContext.Provider
-			value={{ isPermanentlyExpanded, handleManualToggle, closeOnNavigate }}
+			value={{ isPermanentlyExpanded, handleManualToggle }}
 		>
 			{children}
 		</SidebarControlContext.Provider>

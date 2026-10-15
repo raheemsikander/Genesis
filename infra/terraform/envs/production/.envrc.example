@@ -22,4 +22,3 @@ export TF_VAR_s3_public_endpoint=""                 # optional; public URL clien
 export TF_VAR_next_public_rollbar_client_token=""   # Rollbar client token
 export TF_VAR_rollbar_client_sourcemap_token=""     # Rollbar source-map upload token (build-time)
 export TF_VAR_next_public_mixpanel_token=""         # Mixpanel project token (product analytics + session replay)
-export TF_VAR_next_public_ga4_measurement_id=""     # GA4 Web data stream measurement ID (G-XXXXXXXXXX; web analytics + UTM tracking)

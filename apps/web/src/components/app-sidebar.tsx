@@ -52,7 +52,7 @@ export const AppSidebar: FC<AppSidebarProps> = ({
 }) => {
 	const { signOut } = useClerk();
 	const { user } = useUser();
-	const { isPermanentlyExpanded, closeOnNavigate } = useSidebarControl();
+	const { isPermanentlyExpanded } = useSidebarControl();
 	const isMobile = useIsMobile();
 	const [expandedParent, setExpandedParent] = useState<string | null>(null);
 	const pathname = usePathname();
@@ -156,7 +156,6 @@ export const AppSidebar: FC<AppSidebarProps> = ({
 											<li key={sub.title}>
 												<Link
 													href={sub.url}
-													onClick={closeOnNavigate}
 													className={cn(
 														"flex items-center gap-3 border-l-4 py-2.5 pr-4 pl-10 text-sm transition",
 														"hover:bg-accent hover:text-foreground",
@@ -179,7 +178,6 @@ export const AppSidebar: FC<AppSidebarProps> = ({
 							<li key={item.title}>
 								<Link
 									href={item.url}
-									onClick={closeOnNavigate}
 									title={!showFull ? item.title : undefined}
 									className={cn(
 										"flex items-center border-l-4 py-3 text-sm transition",
@@ -251,7 +249,6 @@ export const AppSidebar: FC<AppSidebarProps> = ({
 						<DropdownMenuItem>
 							<Link
 								href={{ pathname: "/portal/profile" }}
-								onClick={closeOnNavigate}
 								className="flex items-center gap-2"
 							>
 								<UserIcon className="h-4 w-4" />

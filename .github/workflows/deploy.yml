@@ -10,45 +10,15 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
 
-    env:
-      DEPLOY_ENV: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
-
     steps:
       - uses: actions/checkout@v6
 
       - uses: ./.github/actions/setup
 
       # -------------------------------------------------------------------------
-      # Complete a Postgres handshake before migrating.
-      # drizzle-kit renders a spinner over its own connection error, so a dead
-      # database produces a bare "exited (1)" with no cause anywhere in the log.
-      # -------------------------------------------------------------------------
-      - name: Check the database is reachable
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: |
-          if [ -z "$DATABASE_URL" ]; then
-            echo "::error::DATABASE_URL is unset for the '$DEPLOY_ENV' environment. Apply infra/terraform/envs/$DEPLOY_ENV to repopulate it."
-            exit 1
-          fi
-
-          node apps/server/scripts/check-db-reachable.mjs && exit 0
-          probe_exit=$?
-
-          # Exit 2 means the host answered but the Postgres handshake failed,
-          # which is how a deleted Render database presents. Anything else is a
-          # network error or a broken probe; recreating the database won't help.
-          if [ "$probe_exit" -eq 2 ]; then
-            echo "::error::The '$DEPLOY_ENV' database did not answer. Render deletes free-tier Postgres after its 30-day lifetime plus a 14-day grace period; if it expired, run 'terraform apply' in infra/terraform/envs/$DEPLOY_ENV to recreate it, which also refreshes the DATABASE_URL secret."
-          else
-            echo "::error::The database preflight failed before reaching Postgres (exit $probe_exit): check DATABASE_URL and the step output above. The database itself may be fine."
-          fi
-          exit 1
-
-      # -------------------------------------------------------------------------
       # Run database migrations against the target environment's database.
       # This runs BEFORE the deploy so the schema is ready for the new code.
-      # Secret is scoped to the GitHub Environment, same name across all envs.
+      # Secret is scoped to the GitHub Environment — same name across all envs.
       # -------------------------------------------------------------------------
       - name: Run database migrations
         run: pnpm db:migrate
@@ -58,7 +28,7 @@ jobs:
       # -------------------------------------------------------------------------
       # Trigger a Render deploy via the Render REST API.
       # autoDeploy is disabled, so deploys only happen here.
-      # Secrets are scoped to the GitHub Environment, same names across all envs.
+      # Secrets are scoped to the GitHub Environment — same names across all envs.
       # -------------------------------------------------------------------------
       - name: Trigger Render API deploy
         run: |
@@ -76,7 +46,7 @@ jobs:
       # -------------------------------------------------------------------------
       # Trigger a Render deploy for the worker service via the REST API.
       # The worker runs BullMQ background/scheduled jobs in a separate process.
-      # Secrets are scoped to the GitHub Environment, same names across all envs.
+      # Secrets are scoped to the GitHub Environment — same names across all envs.
       # To enable: uncomment this step (and enable the worker in Terraform).
       # -------------------------------------------------------------------------
       # - name: Trigger Render worker deploy
@@ -102,7 +72,7 @@ jobs:
       # -------------------------------------------------------------------------
       # Trigger a Vercel deploy for the frontend app.
       # Auto-deploy is disabled via apps/web/vercel.json, so deploys only happen here.
-      # Secret is scoped to the GitHub Environment, same name across all envs.
+      # Secret is scoped to the GitHub Environment — same name across all envs.
       # -------------------------------------------------------------------------
       - name: Trigger Vercel deploy
         run: |

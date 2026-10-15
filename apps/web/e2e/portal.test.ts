@@ -121,42 +121,6 @@ test.describe("Portal sidebar — mobile (authenticated)", () => {
 		await expect.poll(() => asideRight(page)).toBeLessThanOrEqual(0);
 	});
 
-	test("closes itself after navigating to another portal route", async ({
-		page,
-	}) => {
-		await page.getByRole("button", { name: "Toggle sidebar" }).click();
-		await expect.poll(() => asideRight(page)).toBeGreaterThan(0);
-
-		await page.getByRole("link", { name: "About" }).click();
-
-		await expect.poll(() => asideRight(page)).toBeLessThanOrEqual(0);
-		await expect(page.getByRole("heading", { name: /about/i })).toBeVisible();
-	});
-
-	test("closes itself after navigating via a submenu item", async ({
-		page,
-	}) => {
-		await page.getByRole("button", { name: "Toggle sidebar" }).click();
-		await expect.poll(() => asideRight(page)).toBeGreaterThan(0);
-
-		await page.getByRole("button", { name: "Design System" }).click();
-		await page.getByRole("link", { name: "Colors" }).click();
-
-		await expect.poll(() => asideRight(page)).toBeLessThanOrEqual(0);
-		await expect(page).toHaveURL(/\/portal\/colors$/);
-	});
-
-	test("closes itself when the current route is tapped again", async ({
-		page,
-	}) => {
-		await page.getByRole("button", { name: "Toggle sidebar" }).click();
-		await expect.poll(() => asideRight(page)).toBeGreaterThan(0);
-
-		await page.getByRole("link", { name: "Home" }).click();
-
-		await expect.poll(() => asideRight(page)).toBeLessThanOrEqual(0);
-	});
-
 	test("user-menu dropdown opens above the trigger on mobile", async ({
 		page,
 	}) => {

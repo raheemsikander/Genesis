@@ -66,7 +66,6 @@ Set these on each Vercel environment (Production, staging, etc.). Scope each var
   ROLLBAR_CLIENT_SOURCEMAP_TOKEN=
   DEPLOY_URL=
   NEXT_PUBLIC_MIXPANEL_TOKEN=
-  NEXT_PUBLIC_GA4_MEASUREMENT_ID=
   ```
   </details>
 
@@ -82,7 +81,6 @@ Set these on each Vercel environment (Production, staging, etc.). Scope each var
 | `ROLLBAR_CLIENT_SOURCEMAP_TOKEN` | Optional (only if Rollbar is enabled) | Rollbar `post_server_item` token from the client project — used at build time to upload source maps. |
 | `DEPLOY_URL` | Optional (only if Rollbar is enabled) | The deployed site URL, no trailing slash. Used as the URL prefix for source map uploads. Set after the domain is assigned. |
 | `NEXT_PUBLIC_MIXPANEL_TOKEN` | Optional | Mixpanel project token (one per environment). Leave unset to disable analytics and session replay. See [`MIXPANEL.md`](integrations/MIXPANEL.md). |
-| `NEXT_PUBLIC_GA4_MEASUREMENT_ID` | Optional | GA4 Web data stream measurement ID (format `G-XXXXXXXXXX`, one per environment). Leave unset to disable web analytics and UTM tracking; any value that is not a `G-` measurement ID also leaves it disabled. See [`GOOGLE_ANALYTICS.md`](integrations/GOOGLE_ANALYTICS.md). |
 
 ---
 

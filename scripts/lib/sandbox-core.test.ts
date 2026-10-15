@@ -14,7 +14,6 @@ import {
 	SERVER_ENV_PORT_KEYS,
 	sanitizeComposeProjectName,
 	scriptArgs,
-	TEST_S3_CREDENTIALS,
 	testDatabaseUrl,
 	testRedisUrl,
 	testS3Endpoint,
@@ -36,8 +35,10 @@ describe("portsForSlot", () => {
 			testPostgres: 5634,
 			redis: 6579,
 			testRedis: 6580,
-			s3: 9200,
-			testS3: 9202,
+			minio: 9200,
+			minioConsole: 9201,
+			testMinio: 9202,
+			testMinioConsole: 9203,
 		});
 	});
 
@@ -79,30 +80,13 @@ describe("test stack endpoints", () => {
 		expect(testRedisUrl(ports)).toBe("redis://localhost:6380");
 		expect(testS3Endpoint(ports)).toBe("http://localhost:9002");
 		expect(testRedisUrl(ports)).not.toContain(String(ports.redis));
-		expect(testS3Endpoint(ports)).not.toContain(String(ports.s3));
+		expect(testS3Endpoint(ports)).not.toContain(String(ports.minio));
 	});
 
 	it("follow the slot", () => {
 		const ports = portsForSlot(3);
 		expect(testRedisUrl(ports)).toBe("redis://localhost:6680");
 		expect(testS3Endpoint(ports)).toBe("http://localhost:9302");
-	});
-
-	it("use the credentials the test Garage is created with", () => {
-		const compose = readFileSync(
-			new URL("../../docker-compose.test.yml", import.meta.url),
-			"utf8",
-		);
-		expect(compose).toContain(
-			`GARAGE_DEFAULT_ACCESS_KEY: ${TEST_S3_CREDENTIALS.accessKeyId}`,
-		);
-		expect(compose).toContain(
-			`GARAGE_DEFAULT_SECRET_KEY: ${TEST_S3_CREDENTIALS.secretAccessKey}`,
-		);
-		// Garage refuses to start with a shorter secret.
-		expect(TEST_S3_CREDENTIALS.secretAccessKey.length).toBeGreaterThanOrEqual(
-			16,
-		);
 	});
 });
 
@@ -226,7 +210,7 @@ describe("envPortMismatches", () => {
 			`DATABASE_URL=postgresql://genesis:genesis@localhost:${ports.postgres}/genesis`,
 			`TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:${ports.testPostgres}/genesis_test`,
 			`REDIS_URL=redis://localhost:${ports.redis}`,
-			`S3_ENDPOINT=http://localhost:${ports.s3}`,
+			`S3_ENDPOINT=http://localhost:${ports.minio}`,
 		].join("\n");
 
 	it("returns nothing when every port matches the slot", () => {

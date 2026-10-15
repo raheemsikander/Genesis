@@ -5,8 +5,10 @@ export const BASE_PORTS = {
 	testPostgres: 5434,
 	redis: 6379,
 	testRedis: 6380,
-	s3: 9000,
-	testS3: 9002,
+	minio: 9000,
+	minioConsole: 9001,
+	testMinio: 9002,
+	testMinioConsole: 9003,
 } as const;
 
 export type SandboxPorts = Record<keyof typeof BASE_PORTS, number>;
@@ -43,18 +45,12 @@ export function testRedisUrl(ports: SandboxPorts): string {
 }
 
 export function testS3Endpoint(ports: SandboxPorts): string {
-	return `http://localhost:${ports.testS3}`;
+	return `http://localhost:${ports.testMinio}`;
 }
 
-/**
- * Must match docker-compose.test.yml. Garage rejects secrets under 16
- * characters, and neither value contains the product name so that
- * scripts/rename.ts, which rewrites this file and the compose file with
- * different rules, cannot leave them disagreeing in a fork.
- */
 export const TEST_S3_CREDENTIALS = {
-	accessKeyId: "test-access-key",
-	secretAccessKey: "test-secret-key-local",
+	accessKeyId: "genesis",
+	secretAccessKey: "genesis123",
 } as const;
 
 /**
@@ -132,7 +128,7 @@ export const SERVER_ENV_PORT_KEYS: EnvPortKeys = {
 	 * never reaches a test run and blocking on it would be a false alarm.
 	 */
 	REDIS_URL: "redis",
-	S3_ENDPOINT: "s3",
+	S3_ENDPOINT: "minio",
 };
 
 export const WEB_ENV_PORT_KEYS: EnvPortKeys = {

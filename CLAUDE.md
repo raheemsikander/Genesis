@@ -23,7 +23,7 @@ Skip invocation only for trivial reads (answering questions about existing code 
 
 ## Development
 
-Local infra (PostgreSQL, Redis, Garage) must be running via `pnpm infra:up` before `pnpm dev`.
+Local infra (PostgreSQL, Redis, MinIO) must be running via `pnpm infra:up` before `pnpm dev`.
 
 Every git worktree runs in its own sandbox slot (own ports, containers, volumes). All infra/dev/test scripts are slot-aware; run `pnpm sandbox` to see the current worktree's ports. See `docs/engineering/parallel-sandboxes.md`.
 
@@ -74,7 +74,7 @@ Full rationale, current floors, and the local `pre-push` behavior live in `docs/
 | `develop` | Staging | Default branch. All active development flows here. |
 | `main` | Production | Stable, released code only. Never committed to directly. |
 
-During MVP, only the staging environment (the `develop` branch) is deployed. `main` is dormant, so `develop` permanently runs ahead of it. That divergence, the one-time unrelated-histories merge a template-derived repo needs, and how to run a release merge are covered in [Branching and Releases](docs/engineering/branching-and-releases.md).
+During MVP, only the staging environment (the `develop` branch) is deployed. `main` is dormant.
 
 ### Branch Naming
 
@@ -201,9 +201,9 @@ export const adminOnly = protectedProcedure
 - `CORS_ORIGIN` accepts a comma-separated list of full browser origin URLs (each must include the scheme, e.g. `http://localhost:3001`). Use multiple entries for forks that need a staging origin plus a preview URL. Each entry is validated as a URL at startup; bare hostnames or `*` will fail. The first entry is treated as the primary app URL and is used in transactional email links.
 - Both `env.ts` files skip validation when `CI=true` (`skipValidation: process.env.CI === "true"`). CI will not catch env schema mismatches.
 - **S3 storage** uses server-proxied uploads — files go through Express to S3, not directly from the browser. The `files` table stores metadata; actual bytes live in the S3 bucket.
-- `forcePathStyle: true` is required on the S3 client for Garage and Cloudflare R2 compatibility. So is `requestChecksumCalculation: "WHEN_REQUIRED"`: without it the SDK signs an empty-body CRC32 into every presigned PUT, and storage that checks it (Garage, AWS) rejects the upload.
+- `forcePathStyle: true` is required on the S3 client for MinIO and Cloudflare R2 compatibility.
 - All storage operations (upload, list, file URL, delete) go through oRPC. File uploads use oRPC's native `File`/`Blob` support via `oz.file()` from `@orpc/zod` — no separate Express route or multer needed. Presigned GET URLs returned to clients are signed against `S3_PUBLIC_ENDPOINT` (when set) so that clients not on the server's host can reach the storage endpoint. AWS SigV4 covers the host header, so the signing endpoint and the access endpoint must match.
-- Local storage is **Garage** (`dxflrs/garage`, config in `infra/garage/garage.toml`), not MinIO, whose images are gone from every public registry. `pnpm infra:up` starts it and it creates the `file-uploads` bucket itself on first boot; there is no init step and no web console (use `docker compose exec garage /garage bucket info file-uploads`). Local creds are `genesis-dev-key` / `genesis-dev-secret-key`: Garage rejects key IDs under 8 characters and secrets under 16, and refuses to start if the secret changes on an existing volume.
+- MinIO must be running (`pnpm infra:up` starts all services including MinIO) before using storage locally. Create the default bucket via the MinIO console at `http://localhost:9001` (login: genesis / genesis123).
 - The `files` table uses soft delete (`deletedAt`). Queries must filter `WHERE deleted_at IS NULL` to exclude deleted files. The S3 object is removed on delete, but the metadata row persists.
 - **Table ID convention**: All tables use a `serial` integer `id` as the primary key (better for indexing, joins, foreign keys) and a separate `uuid` column with a unique constraint for external/API references (prevents enumeration). Both are auto-generated. Use `id` for internal queries, joins, and foreign keys. Use `uuid` in API inputs/outputs — never expose the integer `id` in API responses. Apply this pattern to all new tables.
 - Rollbar only receives **server-side 5xx errors** (oRPC errors with `status >= 500`). Client errors (4xx) are not reported — they're expected application behavior, not bugs.

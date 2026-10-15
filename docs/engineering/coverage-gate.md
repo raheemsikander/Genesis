@@ -12,8 +12,8 @@ Current floors:
 
 | Suite | Statements | Branches | Functions | Lines |
 |---|---|---|---|---|
-| Server unit | 41 | 53 | 30 | 41 |
-| Web | 33 | 26 | 24 | 33 |
+| Server unit | 34 | 45 | 24 | 33 |
+| Web | 18 | 16 | 11 | 18 |
 
 These were reset in GENESIS-191 when honest `coverage.include` was added. The denominator expanded to all of `src/` (previously the V8 provider counted only files a test imported), so the percentages dropped while the set of covered lines was unchanged. That was a measurement fix, not a coverage regression.
 
@@ -25,7 +25,7 @@ The integration suite has no standalone threshold. It targets controller and DB 
 
 `codecov.yml` `status.project: target: auto` blocks any drop versus the base commit beyond a 0.5% jitter buffer (v8 line counting is not perfectly deterministic run-to-run). `status.patch: target: 80%` holds new and changed lines in a PR to a fixed 80% bar.
 
-Patch is pinned rather than `auto` on purpose. `auto` grades new code against the overall project number, which the GENESIS-191 baseline reset collapsed to roughly 34/19% (see the table above for where the floors sit today), so `auto` would let a large untested module through. A fixed target keeps new code to a standard independent of the legacy baseline while the project floor ratchets up.
+Patch is pinned rather than `auto` on purpose. `auto` grades new code against the overall project number, which the GENESIS-191 baseline reset collapsed to roughly 34/19%, so `auto` would let a large untested module through. A fixed target keeps new code to a standard independent of the legacy baseline while the project floor ratchets up.
 
 Make these required status checks in branch protection for hard enforcement.
 
