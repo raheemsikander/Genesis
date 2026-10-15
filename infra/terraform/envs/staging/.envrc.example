@@ -1,0 +1,24 @@
+# Copy to .envrc, fill in values. Source both `../shared/.envrc` and this
+# file before running terraform — staging needs shared's provider auth
+# (Render, Vercel, GitHub, Vercel team ID, TF_VAR_render_api_key mirror)
+# plus the env-specific values below.
+#
+# .envrc is .gitignored.
+
+# ---- Vercel platform options ------------------------------------------------
+export TF_VAR_frontend_domain=""       # public frontend domain (custom or *.vercel.app); empty auto-generates
+
+# ---- Required (consumed by both Render and Vercel) --------------------------
+export TF_VAR_clerk_secret_key="sk_test_..."        # Clerk Dashboard → API Keys
+export TF_VAR_clerk_publishable_key="pk_test_..."   # Clerk Dashboard → API Keys
+
+# ---- Server-only (flow into the Render web service env group) ---------------
+export TF_VAR_resend_api_key=""                     # Resend → API Keys
+export TF_VAR_resend_from_email=""                  # verified Resend sender
+export TF_VAR_rollbar_server_token=""               # Rollbar server token
+export TF_VAR_s3_public_endpoint=""                 # optional; public URL clients use for presigned GET URLs (e.g. Cloudflare R2 public domain)
+
+# ---- Client-only (flow into the Vercel project env vars) --------------------
+export TF_VAR_next_public_rollbar_client_token=""   # Rollbar client token
+export TF_VAR_rollbar_client_sourcemap_token=""     # Rollbar source-map upload token (build-time)
+export TF_VAR_next_public_mixpanel_token=""         # Mixpanel project token (product analytics + session replay)

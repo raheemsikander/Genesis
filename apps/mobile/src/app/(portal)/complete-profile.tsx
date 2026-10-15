@@ -1,0 +1,56 @@
+import { useForm } from "@tanstack/react-form";
+import { useRouter } from "expo-router";
+import { View } from "react-native";
+import { z } from "zod";
+import { useCompleteProfile } from "../../api/auth.api";
+import { SafeAreaView } from "../../components/safe-area-view";
+import { Button, Input, Text } from "../../components/ui";
+
+const CompleteProfileSchema = z.object({
+	name: z.string().min(1, "Please enter your name"),
+});
+
+export default function CompleteProfile() {
+	const router = useRouter();
+	const mutation = useCompleteProfile({
+		onSuccess: () => router.replace("/(portal)/(tabs)/(home)"),
+	});
+
+	const form = useForm({
+		defaultValues: { name: "" },
+		validators: { onChange: CompleteProfileSchema },
+		onSubmit: ({ value }) => {
+			mutation.mutate({ name: value.name });
+		},
+	});
+
+	return (
+		<SafeAreaView className="flex-1 bg-background">
+			<View className="flex-1 justify-center gap-4 p-6">
+				<Text className="font-semibold text-3xl text-foreground">
+					Complete your profile
+				</Text>
+				<form.Field name="name">
+					{(field) => (
+						<Input
+							value={field.state.value}
+							onChangeText={field.handleChange}
+							onBlur={field.handleBlur}
+							placeholder="Full name"
+						/>
+					)}
+				</form.Field>
+				{mutation.isError ? (
+					<Text className="text-destructive text-sm">
+						{mutation.error.message}
+					</Text>
+				) : null}
+				<Button
+					label="Save"
+					onPress={() => form.handleSubmit()}
+					loading={mutation.isPending}
+				/>
+			</View>
+		</SafeAreaView>
+	);
+}
