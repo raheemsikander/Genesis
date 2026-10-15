@@ -1,0 +1,80 @@
+# =============================================================================
+# Ephemeral Test Infrastructure
+#
+# Self-contained: an integration run must never touch the dev stack, because
+# a test that writes to the dev database or bucket corrupts local development
+# state. Nothing here uses a named volume, so every run starts clean.
+#
+# Ports default to slot 0 and are offset by slot * 100 via pnpm infra:test:up.
+# The wrapper also exports the matching connection strings to vitest, so the
+# app's .env values never reach a test run.
+# =============================================================================
+
+services:
+  test-db:
+    image: postgres:16-alpine
+    ports:
+      - "${TEST_POSTGRES_PORT:-5434}:5432"
+    environment:
+      POSTGRES_DB: genesis_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 5
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  test-redis:
+    image: redis:7-alpine
+    ports:
+      - "${TEST_REDIS_PORT:-6380}:6379"
+    # No persistence: a test run starts from an empty keyspace.
+    command: redis-server --save "" --appendonly no
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 5
+
+  test-minio:
+    image: minio/minio
+    ports:
+      - "${TEST_MINIO_PORT:-9002}:9000"
+      - "${TEST_MINIO_CONSOLE_PORT:-9003}:9001"
+    environment:
+      MINIO_ROOT_USER: genesis
+      MINIO_ROOT_PASSWORD: genesis123
+    command: server /data --console-address ":9001"
+    tmpfs:
+      - /data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 2s
+      timeout: 5s
+      retries: 5
+
+  # Gated behind the `init` profile so it does not start with `up` (services
+  # with profiles are excluded). pnpm test:server:integration runs it
+  # explicitly once the stack is healthy, matching the dev stack's minio-init.
+  test-minio-init:
+    image: minio/mc
+    profiles: ["init"]
+    restart: "no"
+    depends_on:
+      test-minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: genesis
+      MINIO_ROOT_PASSWORD: genesis123
+      # Matches the app's S3_BUCKET default. A fork that renames the bucket in
+      # .env must export S3_BUCKET so the test stack creates the same one.
+      S3_BUCKET: "${S3_BUCKET:-file-uploads}"
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://test-minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD} &&
+      mc mb --ignore-existing local/$${S3_BUCKET} &&
+      echo 'Test MinIO bucket '$${S3_BUCKET}' ready.'
+      "

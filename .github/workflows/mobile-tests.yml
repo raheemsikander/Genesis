@@ -1,0 +1,37 @@
+name: Mobile Tests
+
+on:
+  pull_request:
+    paths:
+      - "apps/mobile/**"
+      - "packages/shared/**"
+      - "packages/orpc-contracts/**"
+      - "pnpm-lock.yaml"
+      # Shared root config that affects mobile's tsc / expo export — mobile was
+      # scoped out of the repo-wide lint.yml/build.yml, so this is its only gate.
+      - "tsconfig.base.json"
+      - "turbo.json"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/mobile-tests.yml"
+      # Shared composite action supplies mobile's Node + frozen install; a change
+      # confined to it (e.g. a node-version bump) must re-trigger this gate.
+      - ".github/actions/setup/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Mobile PR Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: ./.github/actions/setup
+
+      - name: Type-check
+        run: pnpm --filter mobile check-types
+
+      - name: Bundle smoke test (expo export)
+        run: pnpm --filter mobile build

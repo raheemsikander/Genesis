@@ -1,0 +1,53 @@
+/** biome-ignore-all lint/suspicious/noDuplicateCustomProperties: tokens are intentionally redefined per Uniwind @variant theme block */
+@import "tailwindcss";
+@import "uniwind";
+
+/**
+ * Design tokens seeded from the web app's packages/ui/src/styles/globals.css.
+ * Uniwind resolves the light/dark variant from the system color scheme.
+ * Note: --color-destructive is the vivid accent here (solid buttons on mobile),
+ * unlike the web's soft-background/vivid-foreground state-token pattern.
+ */
+@layer theme {
+	:root {
+		@variant light {
+			--color-background: #f9f8fc;
+			--color-foreground: #302d50;
+			--color-card: #fcfcfd;
+			--color-card-foreground: #302d50;
+			--color-primary: #2c429d;
+			--color-primary-foreground: #ffffff;
+			--color-secondary: #e6e3f0;
+			--color-secondary-foreground: #302d50;
+			--color-muted: #f0f0f2;
+			--color-muted-foreground: #4a4968;
+			--color-accent: #eeedf4;
+			--color-accent-foreground: #302d50;
+			--color-border: #d9d8e0;
+			--color-input: #d9d8e0;
+			--color-ring: #8996c5;
+			--color-destructive: #b34457;
+			--color-destructive-foreground: #ffffff;
+		}
+
+		@variant dark {
+			--color-background: #15141e;
+			--color-foreground: #e8e6ef;
+			--color-card: #1c1b23;
+			--color-card-foreground: #e8e6ef;
+			--color-primary: #cbb8ff;
+			--color-primary-foreground: #15141e;
+			--color-secondary: #27262d;
+			--color-secondary-foreground: #e8e6ef;
+			--color-muted: #202022;
+			--color-muted-foreground: #a8a8a8;
+			--color-accent: #26252d;
+			--color-accent-foreground: #e8e6ef;
+			--color-border: #2e2d3a;
+			--color-input: #2e2d3a;
+			--color-ring: #cbb8ff;
+			--color-destructive: #f3a3b1;
+			--color-destructive-foreground: #15141e;
+		}
+	}
+}
