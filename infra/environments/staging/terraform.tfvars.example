@@ -1,0 +1,52 @@
+# Copy to terraform.tfvars (gitignored) for local use, or set as workspace
+# variables in Terraform Cloud. Never commit real values.
+
+# --- Provider credentials (sensitive) ---
+render_api_key       = "rnd_xxx"
+vercel_api_token     = "xxx"
+cloudflare_api_token = "xxx"
+github_token         = "ghp_xxx"
+
+# --- Identities ---
+github_owner      = "Conrad-Labs"
+github_repository = "project-genesis-2.0"
+render_owner_id   = "tea_xxx"
+render_repo_url   = "https://github.com/Conrad-Labs/project-genesis-2.0"
+vercel_team_id    = "team_xxx"
+vercel_git_repo   = "Conrad-Labs/project-genesis-2.0"
+
+# --- Master switches ---
+enabled         = true   # flip to false to tear down the whole env (blocked by prevent_destroy on postgres and r2)
+service_enabled = true   # flip to false to stop serving traffic while keeping the data layer intact
+
+# --- Feature flags ---
+enable_worker  = true
+enable_r2      = true
+enable_rollbar = false
+enable_codecov = false
+
+# --- Cloudflare (required when enable_r2 = true) ---
+cloudflare_account_id = "xxx"
+r2_access_key_id      = "xxx"   # created manually - see README
+r2_secret_access_key  = "xxx"
+
+# --- Domain (optional) ---
+# vercel_domain = "staging.example.com"
+
+# --- Database migrations ---
+# server_pre_deploy_command = "pnpm --filter @genesis/server db:migrate"  # set to "" to skip
+
+# --- Clerk (manual: create instance in Clerk dashboard) ---
+clerk_publishable_key = "pk_test_xxx"
+clerk_secret_key      = "sk_test_xxx"
+
+# --- Resend (manual: create API key in Resend dashboard) ---
+resend_api_key    = "re_xxx"
+resend_from_email = "noreply@example.com"
+
+# --- Rollbar (required when enable_rollbar = true) ---
+# rollbar_server_token = "xxx"
+# rollbar_client_token = "xxx"
+
+# --- Codecov (required when enable_codecov = true) ---
+# codecov_token = "xxx"

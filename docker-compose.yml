@@ -1,0 +1,83 @@
+# =============================================================================
+# Local Development Infrastructure
+#
+# Starts PostgreSQL, Redis, and MinIO locally so you can run the app
+# without installing anything on your machine.
+#
+# Usage:
+#   pnpm infra:up              start all services (waits for healthy)
+#   pnpm infra:down            stop all services (data is preserved)
+#   docker compose down -v     stop all services AND delete all data
+#
+# The app itself (pnpm dev) still runs outside Docker as normal.
+# These services match the versions used in production on Render.
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 16 — matches the version used on Render
+  # Connection string: postgresql://genesis:genesis@localhost:5432/genesis
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: genesis
+      POSTGRES_PASSWORD: genesis
+      POSTGRES_DB: genesis
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U genesis -d genesis"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Redis 7 — matches the version used on Render
+  # Connection string: redis://localhost:6379
+  # Used by BullMQ for background and scheduled job processing.
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # MinIO — S3-compatible local object storage
+  # API:     http://localhost:9000
+  # Console: http://localhost:9001  (username: genesis, password: genesis123)
+  #
+  # Note: MinIO is not yet wired up in the application code. This service
+  # is here so local dev matches production infrastructure from the start.
+  # When integrating, use the AWS S3 SDK pointed at http://localhost:9000.
+  # ---------------------------------------------------------------------------
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: genesis
+      MINIO_ROOT_PASSWORD: genesis123
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
