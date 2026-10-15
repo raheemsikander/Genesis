@@ -1,0 +1,48 @@
+{
+	"$schema": "https://raw.githubusercontent.com/Conrad-Labs/olympus/main/schemas/config.v1.json",
+	"version": 1,
+	"git": {
+		"defaultBranch": "develop",
+		"branchFormat": {
+			"pattern": "^[a-z]+-[0-9]+-[a-z0-9]+(-[a-z0-9]+)*$",
+			"example": "genesis-150-automate-render-terraform",
+			"description": "<prefix>-<ticket-number>-<short-description>"
+		}
+	},
+	"tickets": {
+		"provider": "notion",
+		"notion": {
+			"databaseUrl": "https://www.notion.so/328512441d3c81d5931ff1faee28ddd8",
+			"fields": {
+				"title": "Task Name",
+				"status": "Status",
+				"assignee": "Engineer"
+			}
+		},
+		"pipeline": [
+			{ "status": "Not Started", "on": "kickstart" },
+			{ "status": "Planning", "on": "planningStarted" },
+			{ "status": "Ready for Dev", "on": "planApproved" },
+			{ "status": "In Development", "on": "implementStart" },
+			{ "status": "In Review", "on": "prCreated" },
+			{ "status": "Ready to Deploy", "on": "prMerged" },
+			{ "status": "Done", "on": "qaPassed" },
+			{ "status": "Done", "on": "complete" }
+		]
+	},
+	"conventions": {
+		"commitConfigPath": "commitlint.config.js",
+		"planDocsPath": "docs/plans"
+	},
+	"commands": {
+		"lint": "pnpm check",
+		"build": ["pnpm check-types", "pnpm build"],
+		"test": ["pnpm test:server:unit", "pnpm test:server:integration"]
+	},
+	"workflow": {
+		"brainstorm": true,
+		"codeReview": true,
+		"simplify": true,
+		"claudeMdRevision": true
+	}
+}

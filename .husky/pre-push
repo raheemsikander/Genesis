@@ -1,0 +1,41 @@
+# Integration is skipped here (needs the Postgres test DB); CI enforces it.
+# Bypass the whole hook with `git push --no-verify`.
+# `SKIP_COVERAGE=1 git push` runs the suites without the threshold gate for
+# WIP pushes; the branch-name check below still runs, and CI + Codecov stay
+# the hard floor either way.
+
+branch=$(git symbolic-ref --short HEAD)
+
+# main/develop and bot-created branches skip the name check but still test.
+case "$branch" in
+	main|develop|dependabot/*|release/*|hotfix/*) ;;
+	*)
+		pattern="^[a-z]+-[0-9]+-[a-z0-9]+(-[a-z0-9]+)*$"
+
+		if ! printf '%s\n' "$branch" | grep -qE "$pattern"; then
+			echo ""
+			echo "ERROR: Branch name '$branch' does not follow the naming convention."
+			echo ""
+			echo "  Pattern:  prefix-number-short-description"
+			echo "  Example:  project-45-create-admin-views"
+			echo ""
+			echo "Branch names must be lowercase, hyphenated, and start with a lowercase"
+			echo "prefix, followed by a numeric ticket ID and a short description."
+			echo ""
+			exit 1
+		fi
+		;;
+esac
+
+# Scripts unit tests — fast, no DB, no coverage gate, so they run either way.
+pnpm test:scripts || exit 1
+
+if [ "$SKIP_COVERAGE" = "1" ]; then
+	echo "SKIP_COVERAGE=1 set - running tests without the coverage threshold gate..."
+	pnpm --filter server test:unit || exit 1
+	pnpm --filter web test || exit 1
+else
+	echo "Running coverage-gated tests before push (SKIP_COVERAGE=1 to skip the gate)..."
+	pnpm --filter server test:unit --coverage || exit 1
+	pnpm --filter web test --coverage || exit 1
+fi

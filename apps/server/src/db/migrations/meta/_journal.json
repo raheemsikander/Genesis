@@ -1,0 +1,69 @@
+{
+	"version": "7",
+	"dialect": "postgresql",
+	"entries": [
+		{
+			"idx": 0,
+			"version": "7",
+			"when": 1773771086139,
+			"tag": "0000_users_table",
+			"breakpoints": true
+		},
+		{
+			"idx": 1,
+			"version": "7",
+			"when": 1773775727883,
+			"tag": "0001_add_is_admin_user_prop",
+			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "7",
+			"when": 1775638086067,
+			"tag": "0002_add_files_table",
+			"breakpoints": true
+		},
+		{
+			"idx": 3,
+			"version": "7",
+			"when": 1776148695306,
+			"tag": "0003_update_user_table",
+			"breakpoints": true
+		},
+		{
+			"idx": 4,
+			"version": "7",
+			"when": 1776148695307,
+			"tag": "0004_auth_data_migration_and_cleanup",
+			"breakpoints": true
+		},
+		{
+			"idx": 5,
+			"version": "7",
+			"when": 1776161734198,
+			"tag": "0005_add_audit_columns_to_user_table",
+			"breakpoints": true
+		},
+		{
+			"idx": 6,
+			"version": "7",
+			"when": 1776168951376,
+			"tag": "0006_drop_status_from_users",
+			"breakpoints": true
+		},
+		{
+			"idx": 7,
+			"version": "7",
+			"when": 1778217485557,
+			"tag": "0007_add_user_deleted_at",
+			"breakpoints": true
+		},
+		{
+			"idx": 8,
+			"version": "7",
+			"when": 1778585128181,
+			"tag": "0008_fk_to_user_id",
+			"breakpoints": true
+		}
+	]
+}
