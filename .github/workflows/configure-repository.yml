@@ -1,0 +1,165 @@
+name: Configure Repository
+
+on:
+  workflow_dispatch:
+    inputs:
+      app-id:
+        description: "Conrad Labs Automation GitHub App ID"
+        required: true
+      private-key:
+        description: "Conrad Labs Automation GitHub App private key (PEM)"
+        required: true
+
+jobs:
+  configure-repository:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Generate app token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ inputs.app-id }}
+          private-key: ${{ inputs.private-key }}
+
+      - name: Configure repository settings
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh api \
+            --method PATCH \
+            "/repos/$REPO" \
+            --field allow_squash_merge=true \
+            --field allow_merge_commit=true \
+            --field allow_rebase_merge=false \
+            --field allow_auto_merge=true \
+            --field delete_branch_on_merge=true \
+            --field squash_merge_commit_title=PR_TITLE \
+            --field squash_merge_commit_message=BLANK
+
+      - name: Upsert develop branch protection ruleset
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          RULESET_NAME="develop"
+          EXISTING_ID=$(gh api "/repos/$REPO/rulesets" --jq ".[] | select(.name == \"$RULESET_NAME\") | .id")
+
+          PAYLOAD=$(cat << 'RULES'
+          {
+            "name": "develop",
+            "target": "branch",
+            "enforcement": "active",
+            "conditions": {
+              "ref_name": {
+                "include": ["refs/heads/develop"],
+                "exclude": []
+              }
+            },
+            "rules": [
+              {
+                "type": "required_status_checks",
+                "parameters": {
+                  "strict_required_status_checks_policy": true,
+                  "required_status_checks": [
+                    { "context": "build" },
+                    { "context": "lint" },
+                    { "context": "check-title" },
+                    { "context": "Web Unit Tests" },
+                    { "context": "Server Unit & Integration Tests" }
+                  ]
+                }
+              },
+              {
+                "type": "pull_request",
+                "parameters": {
+                  "required_approving_review_count": 1,
+                  "dismiss_stale_reviews_on_push": true,
+                  "require_last_push_approval": false,
+                  "required_review_thread_resolution": true,
+                  "allowed_merge_methods": ["squash"]
+                }
+              },
+              { "type": "non_fast_forward" },
+              { "type": "deletion" }
+            ]
+          }
+          RULES
+          )
+
+          if [ -n "$EXISTING_ID" ]; then
+            echo "Updating existing ruleset 'develop' ($EXISTING_ID)"
+            echo "$PAYLOAD" | gh api --method PUT "/repos/$REPO/rulesets/$EXISTING_ID" --input -
+          else
+            echo "Creating new ruleset 'develop'"
+            echo "$PAYLOAD" | gh api --method POST "/repos/$REPO/rulesets" --input -
+          fi
+
+      - name: Upsert main branch protection ruleset
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          RULESET_NAME="main"
+          EXISTING_ID=$(gh api "/repos/$REPO/rulesets" --jq ".[] | select(.name == \"$RULESET_NAME\") | .id")
+
+          PAYLOAD=$(cat << 'RULES'
+          {
+            "name": "main",
+            "target": "branch",
+            "enforcement": "active",
+            "conditions": {
+              "ref_name": {
+                "include": ["refs/heads/main"],
+                "exclude": []
+              }
+            },
+            "rules": [
+              {
+                "type": "required_status_checks",
+                "parameters": {
+                  "strict_required_status_checks_policy": true,
+                  "required_status_checks": [
+                    { "context": "build" },
+                    { "context": "lint" },
+                    { "context": "check-title" },
+                    { "context": "Web Unit Tests" },
+                    { "context": "Server Unit & Integration Tests" }
+                  ]
+                }
+              },
+              {
+                "type": "pull_request",
+                "parameters": {
+                  "required_approving_review_count": 1,
+                  "dismiss_stale_reviews_on_push": false,
+                  "require_last_push_approval": false,
+                  "required_review_thread_resolution": false,
+                  "allowed_merge_methods": ["merge"]
+                }
+              },
+              { "type": "non_fast_forward" },
+              { "type": "deletion" }
+            ]
+          }
+          RULES
+          )
+
+          if [ -n "$EXISTING_ID" ]; then
+            echo "Updating existing ruleset 'main' ($EXISTING_ID)"
+            echo "$PAYLOAD" | gh api --method PUT "/repos/$REPO/rulesets/$EXISTING_ID" --input -
+          else
+            echo "Creating new ruleset 'main'"
+            echo "$PAYLOAD" | gh api --method POST "/repos/$REPO/rulesets" --input -
+          fi
+
+      - name: Enable Dependabot vulnerability alerts
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh api \
+            --method PUT \
+            "/repos/$REPO/vulnerability-alerts"
