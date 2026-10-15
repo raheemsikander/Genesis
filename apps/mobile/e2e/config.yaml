@@ -1,0 +1,4 @@
+# Maestro workspace config — https://docs.maestro.dev
+# Running `maestro test` against this directory discovers every flow matched here.
+flows:
+  - "flows/**"
