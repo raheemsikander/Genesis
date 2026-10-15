@@ -1,0 +1,71 @@
+packages:
+  - apps/*
+  - packages/*
+minimumReleaseAge: 10080
+minimumReleaseAgeExclude:
+  # Transitive dep of next; releases minor versions more often than the 7-day gate allows.
+  - baseline-browser-mapping
+  # Transitive dep of @vitest/coverage-v8 (via istanbul-lib-report); ubiquitous and stable.
+  - semver
+  # Expo SDK + React Native are first-party packages whose versions are locked to the
+  # installed Expo SDK (apps/mobile). They publish patch releases far more often than the
+  # 7-day gate allows, and the SDK pins exact versions, so the supply-chain risk the gate
+  # guards against does not apply. `expo install` keeps these aligned to the SDK.
+  - expo
+  - "expo-*"
+  - "@expo/*"
+  - babel-preset-expo
+  - react-native
+  - "react-native-*"
+  - "@react-native/*"
+  - "@react-native-community/*"
+  - metro
+  - "metro-*"
+  # NativeWind v5 is still in preview; pin + exclude so the styling toolchain (apps/mobile)
+  # installs. react-native-css (its nightly runtime) is already covered by react-native-*.
+  - nativewind
+overrides:
+  # Pins @tanstack/query-core to the version @tanstack/react-query expects;
+  # dependabot otherwise bumps the transitive ahead of the consumer and breaks resolution.
+  '@tanstack/query-core': ^5.97.0
+  # NativeWind v5 / react-native-css (apps/mobile) compile Tailwind v4 CSS through lightningcss
+  # and require this exact version; newer 1.31/1.32 produce output their compiler can't
+  # deserialize. apps/web's Tailwind v4 build is verified against this pin too.
+  lightningcss: 1.30.1
+allowBuilds:
+  # Explicit allowlist for postinstall scripts: `true` for required native/build tooling,
+  # `false` for scripts we've reviewed and don't need at install time.
+  esbuild: true
+  sharp: true
+  # Native msgpack addon (transitive of next/turbo); prebuilt binary is used at runtime.
+  msgpackr-extract: true
+  # msw's postinstall copies a service-worker.js for browser use; we only run msw
+  # server-side. If a browser test ever needs the SW, run `pnpm exec msw init <dir>` once.
+  msw: false
+  # @clerk/shared's postinstall is informational; nothing the build relies on.
+  '@clerk/shared': false
+  # Transitive of @clerk/expo; postinstall isn't needed for our build.
+  browser-tabs-lock: false
+  # Optional native accelerators for `ws` (transitive); JS fallback is used. Not needed.
+  bufferutil: false
+  utf-8-validate: false
+  # core-js postinstall only prints a funding notice.
+  core-js: false
+catalog:
+  date-fns: ^4.1.0
+  "@orpc/client": ^1.13.14
+  "@orpc/contract": ^1.13.14
+  "@orpc/openapi": ^1.13.14
+  "@orpc/server": ^1.13.14
+  "@orpc/zod": ^1.13.14
+  "@types/express": ^5.0.1
+  "@types/react": ^19.2.14
+  "@types/react-dom": ^19.2.3
+  dotenv: ^17.4.2
+  lucide-react: ^1.8.0
+  next-themes: ^0.4.6
+  react: ^19.2.5
+  react-dom: ^19.2.5
+  sonner: ^2.0.5
+  tailwindcss: ^4.2.2
+  zod: ^4.3.6
