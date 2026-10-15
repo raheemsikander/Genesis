@@ -1,0 +1,28 @@
+# Dependencies, installed fresh inside the Docker build
+**/node_modules
+
+# Build caches
+**/.turbo
+**/.next
+**/dist
+
+# Git and editor
+.git
+.gitignore
+.github
+.husky
+.vscode
+.editorconfig
+.claude
+
+# Env files, never bake secrets into an image
+.env
+
+# Frontend build artifacts; source files still needed for pnpm workspace resolution
+apps/web/.next
+apps/web/node_modules
+
+# The mobile app is not part of the server image. If it lands in the context,
+# pnpm's pre-run dependency check sees an uninstalled workspace project and
+# triggers a full React Native install before `pnpm --filter server build`.
+apps/mobile
