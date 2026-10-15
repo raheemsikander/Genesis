@@ -1,0 +1,28 @@
+@layer components {
+	.form-container {
+		@apply flex flex-col gap-2;
+	}
+
+	.form-row {
+		@apply flex gap-4;
+	}
+
+	.invalid-input {
+		@apply mt-0 text-xs;
+		color: var(--destructive-foreground);
+	}
+
+	.help-text {
+		@apply mt-px text-xs text-muted-foreground;
+	}
+
+	.form-actions {
+		@apply flex justify-end gap-2;
+	}
+
+	@media (max-width: 768px) {
+		.form-row {
+			@apply flex-col;
+		}
+	}
+}

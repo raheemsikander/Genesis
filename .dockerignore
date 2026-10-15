@@ -1,0 +1,23 @@
+# Dependencies — installed fresh inside the Docker build
+**/node_modules
+
+# Build caches
+**/.turbo
+**/.next
+**/dist
+
+# Git and editor
+.git
+.gitignore
+.github
+.husky
+.vscode
+.editorconfig
+.claude
+
+# Env files — never bake secrets into an image
+.env
+
+# Frontend build artifacts — source files still needed for pnpm workspace resolution
+apps/web/.next
+apps/web/node_modules
