@@ -1,0 +1,29 @@
+services:
+  test-db:
+    image: postgres:16-alpine
+    ports:
+      # Slot-0 default 5434 avoids the dev DB on 5433; other sandbox slots
+      # offset by slot * 100 via pnpm infra:test:up.
+      - "${TEST_POSTGRES_PORT:-5434}:5432"
+    environment:
+      POSTGRES_DB: genesis_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 5
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  # Future: uncomment for storage integration tests
+  # minio:
+  #   image: minio/minio
+  #   ports:
+  #     - "9000:9000"
+  #     - "9001:9001"
+  #   command: server /data --console-address ":9001"
+  #   environment:
+  #     MINIO_ROOT_USER: minioadmin
+  #     MINIO_ROOT_PASSWORD: minioadmin

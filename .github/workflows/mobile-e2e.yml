@@ -1,0 +1,69 @@
+name: Mobile E2E
+
+# Runs E2E on merge to develop (not per-PR): each run does a full EAS build
+# of both platforms, so per-PR would be too costly/slow. Revisit per-PR if/when
+# fingerprint-reuse + repack lands (see docs/engineering/mobile-cicd-pipeline-design.md).
+on:
+  push:
+    branches: [develop]
+    paths:
+      - "apps/mobile/**"
+      - "packages/shared/**"
+      - "packages/orpc-contracts/**"
+      - "apps/mobile/.eas/workflows/e2e.yml"
+      - ".github/workflows/mobile-e2e.yml"
+      # Build-affecting shared inputs (kept in sync with mobile-tests.yml). A
+      # native-dep bump touches only pnpm-lock.yaml; root config affects the build.
+      - "pnpm-lock.yaml"
+      - "tsconfig.base.json"
+      - "turbo.json"
+      - "pnpm-workspace.yaml"
+
+jobs:
+  # Surfaces the bootstrap gap as a neutral skip (not a green pass): if EXPO_TOKEN
+  # is unset, the e2e job below is skipped, so a missing-token run is never
+  # indistinguishable from a real E2E pass.
+  guard:
+    name: Check EAS bootstrap
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - id: check
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [[ -n "$EXPO_TOKEN" ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::EXPO_TOKEN not set — skipping EAS E2E (bootstrap pending)."
+          fi
+
+  e2e:
+    name: Maestro E2E (EAS)
+    needs: [guard]
+    if: ${{ needs.guard.outputs.ready == 'true' }}
+    runs-on: ubuntu-latest
+    # --wait blocks on a dual-platform EAS build (sequential on 1 concurrency);
+    # cap it so a stalled EAS run fails fast instead of riding the 6h default.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      # Pinned EAS CLI (concrete version, not @latest) — reproducible and keeps
+      # the runtime-resolved CLI out of scope with EXPO_TOKEN. Bump deliberately.
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: 20.4.0
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Trigger EAS E2E workflow
+        # --wait propagates the real EAS exit code (0 pass / 11 fail) so the
+        # check reflects the actual result, not just successful submission.
+        run: eas workflow:run e2e.yml --non-interactive --wait
+        working-directory: apps/mobile
