@@ -1,0 +1,29 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"target": "ES2017",
+		"lib": ["dom", "dom.iterable", "esnext"],
+		"types": [],
+		"allowJs": true,
+		"noEmit": true,
+		"jsx": "react-jsx",
+		"incremental": true,
+		"plugins": [
+			{
+				"name": "next"
+			}
+		],
+		"paths": {
+			"@repo/ui/*": ["../../packages/ui/src/*"]
+		}
+	},
+	"include": [
+		"./next-env.d.ts",
+		"./**/*.ts",
+		"./**/*.tsx",
+		"./.next/types/**/*.ts",
+		".next/types/**/*.ts",
+		".next/dev/types/**/*.ts"
+	],
+	"exclude": ["./node_modules"]
+}
