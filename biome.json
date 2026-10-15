@@ -1,0 +1,121 @@
+{
+	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+	"vcs": {
+		"enabled": false,
+		"clientKind": "git",
+		"useIgnoreFile": false
+	},
+	"files": {
+		"ignoreUnknown": false,
+		"includes": [
+			"**",
+			"!**/.next",
+			"!**/dist",
+			"!**/coverage",
+			"!**/.turbo",
+			"!**/.nx",
+			"!**/dev-dist",
+			"!**/.zed",
+			"!**/.vscode",
+			"!**/routeTree.gen.ts",
+			"!**/src-tauri",
+			"!**/.nuxt",
+			"!bts.jsonc",
+			"!**/.expo",
+			"!**/.wrangler",
+			"!**/.alchemy",
+			"!**/.svelte-kit",
+			"!**/wrangler.jsonc",
+			"!**/.source",
+			"!**/convex/_generated",
+			"!**/.claude"
+		]
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab"
+	},
+	"assist": { "actions": { "source": { "organizeImports": "on" } } },
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"correctness": {
+				"useExhaustiveDependencies": "info"
+			},
+			"nursery": {
+				"useSortedClasses": {
+					"level": "warn",
+					"fix": "safe",
+					"options": {
+						"functions": ["clsx", "cva", "cn"]
+					}
+				}
+			},
+			"style": {
+				"noRestrictedImports": {
+					"level": "error",
+					"options": {
+						"patterns": [
+							{
+								"group": ["../../packages/**", "../../apps/**"],
+								"message": "Do not use relative imports to reach other packages or apps. Use the package name (e.g. @repo/shared) instead."
+							},
+							{
+								"group": ["@/**"],
+								"message": "Use relative imports instead of path aliases when importing from the src directory."
+							}
+						]
+					}
+				},
+				"noParameterAssign": "error",
+				"useAsConstAssertion": "error",
+				"useDefaultParameterLast": "error",
+				"useEnumInitializers": "error",
+				"useSelfClosingElements": "error",
+				"useSingleVarDeclarator": "error",
+				"noUnusedTemplateLiteral": "error",
+				"useNumberNamespace": "error",
+				"noInferrableTypes": "error",
+				"noUselessElse": "error"
+			}
+		}
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "double"
+		}
+	},
+	"overrides": [
+		{
+			"includes": ["packages/ui/src/components/**"],
+			"linter": { "enabled": false },
+			"formatter": { "enabled": false },
+			"assist": { "enabled": false }
+		},
+		{
+			"includes": ["apps/mobile/src/components/ui/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": "off"
+					}
+				}
+			}
+		},
+		{
+			"includes": [
+				"apps/mobile/src/uniwind-types.d.ts",
+				"apps/mobile/expo-env.d.ts"
+			],
+			"linter": { "enabled": false },
+			"formatter": { "enabled": false },
+			"assist": { "enabled": false }
+		}
+	],
+	"css": {
+		"parser": {
+			"tailwindDirectives": true
+		}
+	}
+}
