@@ -1,0 +1,66 @@
+# =============================================================================
+# Ephemeral Test Infrastructure
+#
+# Self-contained: an integration run must never touch the dev stack, because
+# a test that writes to the dev database or bucket corrupts local development
+# state. Nothing here uses a named volume, so every run starts clean.
+#
+# Ports default to slot 0 and are offset by slot * 100 via pnpm infra:test:up.
+# The wrapper also exports the matching connection strings to vitest, so the
+# app's .env values never reach a test run.
+# =============================================================================
+
+services:
+  test-db:
+    image: postgres:16-alpine
+    ports:
+      - "${TEST_POSTGRES_PORT:-5434}:5432"
+    environment:
+      POSTGRES_DB: genesis_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 5
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  test-redis:
+    image: redis:7-alpine
+    ports:
+      - "${TEST_REDIS_PORT:-6380}:6379"
+    # No persistence: a test run starts from an empty keyspace.
+    command: redis-server --save "" --appendonly no
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 5
+
+  test-garage:
+    # Bootstraps its own layout, key and the app's bucket before it reports
+    # healthy, so `up --wait` is the whole storage setup. The bucket is the
+    # app's S3_BUCKET default; a fork that renames it in .env must export
+    # S3_BUCKET so the test stack creates the same one.
+    image: dxflrs/garage:v2.4.1@sha256:9c96caa2612d3411acc5b0e6701fb238dbfba33e533a6d7d3d811a4b12d0d020
+    command: ["/garage", "server", "--single-node", "--default-bucket"]
+    ports:
+      - "${TEST_GARAGE_PORT:-9002}:3900"
+    environment:
+      # Must match TEST_S3_CREDENTIALS in scripts/lib/sandbox-core.ts. Neither
+      # value contains the product name, so scripts/rename.ts leaves both alone.
+      GARAGE_DEFAULT_ACCESS_KEY: test-access-key
+      GARAGE_DEFAULT_SECRET_KEY: test-secret-key-local
+      GARAGE_DEFAULT_BUCKET: "${S3_BUCKET:-file-uploads}"
+      RUST_LOG: garage=info,garage_net=warn,garage_api_admin=warn
+    volumes:
+      - ./infra/garage/garage.toml:/etc/garage.toml:ro
+    healthcheck:
+      test: ["CMD", "/garage", "health"]
+      interval: 1s
+      timeout: 5s
+      retries: 30
+    tmpfs:
+      - /var/lib/garage

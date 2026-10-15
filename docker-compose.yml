@@ -1,0 +1,106 @@
+# =============================================================================
+# Local Development Infrastructure
+#
+# Starts PostgreSQL, Redis, and Garage locally so you can run the app
+# without installing anything on your machine.
+#
+# Usage:
+#   pnpm infra:up                    start all services (waits for healthy)
+#   pnpm infra:down                  stop all services (data is preserved)
+#   pnpm infra:down --volumes        stop all services AND delete all data (for this sandbox slot)
+#
+# The app itself (pnpm dev) still runs outside Docker as normal.
+# These services match the versions used in production on Render.
+#
+# Parallel sandboxes: `pnpm infra:up` resolves a sandbox slot (shared across
+# every Genesis-derived checkout on the machine, not just this repo) and
+# exports the *_PORT variables below plus a project name (via
+# COMPOSE_PROJECT_NAME or -p), so each checkout gets its own containers,
+# volumes, and host ports. The defaults here are slot 0's ports.
+# Run `pnpm sandbox` to see your slot.
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 16: matches the version used on Render
+  # Connection string (slot 0 default): postgresql://genesis:genesis@localhost:5433/genesis
+  # other slots offset by slot x 100
+  # Host port 5433 (not Postgres's default 5432) so the container doesn't
+  # collide with a system-installed Postgres that's already bound to 5432.
+  # The container itself still listens on 5432 internally.
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    environment:
+      POSTGRES_USER: genesis
+      POSTGRES_PASSWORD: genesis
+      POSTGRES_DB: genesis
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U genesis -d genesis"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Redis 7: matches the version used on Render
+  # Connection string (slot 0 default): redis://localhost:6379; other slots
+  # offset by slot x 100
+  # Used by BullMQ for background and scheduled job processing.
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Garage: S3-compatible local object storage (stands in for Cloudflare R2)
+  # S3 API (slot 0 default): http://localhost:9000, other slots offset by
+  # slot x 100. Key genesis-dev-key / genesis-dev-secret-key.
+  #
+  # Replaced MinIO, whose images were withdrawn from every public registry.
+  # `--single-node --default-bucket` makes the server itself apply the layout
+  # and create the key and the `file-uploads` bucket on first boot, and skip
+  # them when they already exist, so there is no separate init step.
+  # Garage rejects key IDs under 8 characters and secrets under 16, and
+  # refuses to start if the secret changes on an existing volume
+  # (`pnpm infra:down --volumes`).
+  # There is no web console; inspect from the CLI instead:
+  #   docker compose exec garage /garage bucket info file-uploads
+  # ---------------------------------------------------------------------------
+  garage:
+    # Pinned by digest: Docker Hub gets a new commit-hash tag almost daily.
+    image: dxflrs/garage:v2.4.1@sha256:9c96caa2612d3411acc5b0e6701fb238dbfba33e533a6d7d3d811a4b12d0d020
+    command: ["/garage", "server", "--single-node", "--default-bucket"]
+    ports:
+      - "${GARAGE_PORT:-9000}:3900"
+    environment:
+      GARAGE_DEFAULT_ACCESS_KEY: genesis-dev-key
+      GARAGE_DEFAULT_SECRET_KEY: genesis-dev-secret-key
+      GARAGE_DEFAULT_BUCKET: file-uploads
+      # Without this, every healthcheck logs three INFO lines.
+      RUST_LOG: garage=info,garage_net=warn,garage_api_admin=warn
+    volumes:
+      - ./infra/garage/garage.toml:/etc/garage.toml:ro
+      - garage_data:/var/lib/garage
+    healthcheck:
+      # Exec form: the image has no shell.
+      test: ["CMD", "/garage", "health"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+volumes:
+  postgres_data:
+  redis_data:
+  garage_data:

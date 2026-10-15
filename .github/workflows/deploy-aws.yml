@@ -1,0 +1,178 @@
+name: Deploy (AWS)
+
+# Active only when the repo variable DEPLOY_TARGET is "aws"; otherwise the
+# Render + Vercel workflow (deploy.yml) handles deploys.
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-aws-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: vars.DEPLOY_TARGET == 'aws' && (github.ref_name == 'main' || github.ref_name == 'develop')
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+
+    env:
+      DEPLOY_ENV: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      # No stored AWS keys: the job trades its OIDC token for the
+      # environment's deploy role (infra/aws/modules/deploy-access).
+      - name: Assume the deploy role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Load the deploy config
+        run: |
+          if [ -z "${{ vars.AWS_DEPLOY_CONFIG_PARAMETER }}" ]; then
+            echo "::error::AWS_DEPLOY_CONFIG_PARAMETER is unset for '$DEPLOY_ENV'. Run the github_setup commands from 'terraform output' in infra/aws/envs/$DEPLOY_ENV."
+            exit 1
+          fi
+          aws ssm get-parameter --name "${{ vars.AWS_DEPLOY_CONFIG_PARAMETER }}" \
+            --query Parameter.Value --output text > "$RUNNER_TEMP/deploy.json"
+
+      - name: Load build secrets
+        id: build-secrets
+        run: |
+          secret_arn=$(jq -r .build_secret_arn "$RUNNER_TEMP/deploy.json")
+          token=$(aws secretsmanager get-secret-value --secret-id "$secret_arn" \
+            --query SecretString --output text | jq -r '.ROLLBAR_CLIENT_SOURCEMAP_TOKEN // ""')
+          if [ -n "$token" ]; then
+            echo "::add-mask::$token"
+          fi
+          echo "rollbar_sourcemap_token=$token" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Resolve image names
+        id: images
+        run: |
+          {
+            echo "api=$(jq -r .ecr.api "$RUNNER_TEMP/deploy.json")"
+            echo "web=$(jq -r .ecr.web "$RUNNER_TEMP/deploy.json")"
+            echo "migrate=$(jq -r .ecr.migrate "$RUNNER_TEMP/deploy.json")"
+            echo "web_build_args<<EOF"
+            jq -r '.web_build_args | to_entries[] | "\(.key)=\(.value)"' "$RUNNER_TEMP/deploy.json"
+            echo "GIT_COMMIT_SHA=$GITHUB_SHA"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      # Images are pushed under their commit SHA only. The environment tag
+      # (`:staging` / `:production`) the ECS task definitions run is moved after
+      # migrations succeed, so a task restarting mid-deploy never picks up new
+      # code against the old schema. The web image bakes in NEXT_PUBLIC_*
+      # values, so its SHA tag is environment-scoped.
+      - name: Build and push the api image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: |
+            ${{ steps.images.outputs.api }}:${{ github.sha }}
+          cache-from: type=gha,scope=aws-api
+          cache-to: type=gha,mode=max,scope=aws-api
+
+      - name: Build and push the migrate image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/aws/docker/Dockerfile
+          target: migrate
+          push: true
+          tags: |
+            ${{ steps.images.outputs.migrate }}:${{ github.sha }}
+            ${{ steps.images.outputs.migrate }}:${{ env.DEPLOY_ENV }}
+          cache-from: type=gha,scope=aws-deps
+          cache-to: type=gha,mode=max,scope=aws-deps
+
+      - name: Build and push the web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/aws/docker/Dockerfile
+          target: web
+          push: true
+          build-args: ${{ steps.images.outputs.web_build_args }}
+          secrets: |
+            rollbar_sourcemap_token=${{ steps.build-secrets.outputs.rollbar_sourcemap_token }}
+          tags: |
+            ${{ steps.images.outputs.web }}:${{ env.DEPLOY_ENV }}-${{ github.sha }}
+          cache-from: type=gha,scope=aws-web-${{ env.DEPLOY_ENV }}
+          cache-to: type=gha,mode=max,scope=aws-web-${{ env.DEPLOY_ENV }}
+
+      # Runs inside the VPC as a one-off Fargate task, before any new code
+      # serves traffic, so the schema is ready for it.
+      - name: Run database migrations
+        run: |
+          config="$RUNNER_TEMP/deploy.json"
+          cluster=$(jq -r .cluster "$config")
+          subnets=$(jq -r '.migration.subnets | join(",")' "$config")
+          security_groups=$(jq -r '.migration.security_groups | join(",")' "$config")
+          assign_public_ip=$(jq -r .migration.assign_public_ip "$config")
+
+          task_arn=$(aws ecs run-task \
+            --cluster "$cluster" \
+            --task-definition "$(jq -r .migration.task_definition "$config")" \
+            --launch-type FARGATE \
+            --started-by "github-${GITHUB_RUN_ID}" \
+            --network-configuration "awsvpcConfiguration={subnets=[$subnets],securityGroups=[$security_groups],assignPublicIp=$assign_public_ip}" \
+            --query 'tasks[0].taskArn' --output text)
+          echo "Migration task: $task_arn"
+
+          aws ecs wait tasks-stopped --cluster "$cluster" --tasks "$task_arn"
+
+          exit_code=$(aws ecs describe-tasks --cluster "$cluster" --tasks "$task_arn" \
+            --query 'tasks[0].containers[0].exitCode' --output text)
+          if [ "$exit_code" != "0" ]; then
+            reason=$(aws ecs describe-tasks --cluster "$cluster" --tasks "$task_arn" \
+              --query 'tasks[0].stoppedReason' --output text)
+            echo "::error::Migrations failed (exit code: $exit_code, reason: $reason). Task logs:"
+            aws logs filter-log-events \
+              --log-group-name "$(jq -r .migration.log_group "$config")" \
+              --log-stream-name-prefix "migrate/migrate/${task_arn##*/}" \
+              --query 'events[].message' --output text || true
+            exit 1
+          fi
+          echo "Migrations applied."
+
+      - name: Promote the api and web images
+        run: |
+          docker buildx imagetools create \
+            --tag "${{ steps.images.outputs.api }}:$DEPLOY_ENV" \
+            "${{ steps.images.outputs.api }}:$GITHUB_SHA"
+          docker buildx imagetools create \
+            --tag "${{ steps.images.outputs.web }}:$DEPLOY_ENV" \
+            "${{ steps.images.outputs.web }}:$DEPLOY_ENV-$GITHUB_SHA"
+
+      - name: Roll out the services
+        run: |
+          config="$RUNNER_TEMP/deploy.json"
+          cluster=$(jq -r .cluster "$config")
+          services=$(jq -r '.services | to_entries[] | select(.value != null) | .value' "$config")
+
+          for service in $services; do
+            aws ecs update-service --cluster "$cluster" --service "$service" \
+              --force-new-deployment --query 'service.serviceName' --output text
+          done
+
+          echo "Waiting for the services to become stable..."
+          # shellcheck disable=SC2086
+          aws ecs wait services-stable --cluster "$cluster" --services $services
+          echo "Deployed $GITHUB_SHA to $DEPLOY_ENV."

@@ -1,0 +1,17 @@
+{
+	"cli": {
+		"version": ">= 12.0.0",
+		"appVersionSource": "remote"
+	},
+	"build": {
+		"e2e": {
+			"withoutCredentials": true,
+			"ios": {
+				"simulator": true
+			},
+			"android": {
+				"buildType": "apk"
+			}
+		}
+	}
+}

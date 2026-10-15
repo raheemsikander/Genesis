@@ -1,0 +1,18 @@
+# Copy to .envrc (gitignored), fill in, then `source .envrc` before terraform.
+
+# ---- AWS credentials ----------------------------------------------------------
+# Any standard AWS auth works; a named profile (SSO or keys) is simplest.
+export AWS_PROFILE=""
+
+# ---- Required -------------------------------------------------------------------
+export TF_VAR_clerk_publishable_key="pk_test_..."   # Clerk Dashboard → API Keys
+export TF_VAR_clerk_secret_key="sk_test_..."        # Clerk Dashboard → API Keys
+
+# ---- Optional (leave "" to disable) ---------------------------------------------
+export TF_VAR_resend_api_key=""                     # Resend → API Keys
+export TF_VAR_resend_from_email=""                  # verified Resend sender
+export TF_VAR_rollbar_server_token=""               # Rollbar server token
+export TF_VAR_next_public_rollbar_client_token=""   # Rollbar client token
+export TF_VAR_rollbar_client_sourcemap_token=""     # Rollbar source-map upload token (build-time)
+export TF_VAR_next_public_mixpanel_token=""         # Mixpanel project token
+export TF_VAR_next_public_ga4_measurement_id=""     # GA4 measurement ID (G-XXXXXXXXXX)
