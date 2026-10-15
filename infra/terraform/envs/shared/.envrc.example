@@ -1,0 +1,22 @@
+# Copy to .envrc, fill in values, then `source .envrc` before running terraform.
+# .envrc is .gitignored.
+#
+# Sourced first by every env-root (staging, production, ...) so values that
+# are the same across all envs (provider auth, Vercel team ID, GitHub PAT)
+# live here once. Per-env .envrc files only carry env-specific values.
+
+export RENDER_API_KEY="rnd_..."        # Render Dashboard → search "API Keys"
+export RENDER_OWNER_ID="tea-..."       # curl -s -H "Authorization: Bearer $RENDER_API_KEY" https://api.render.com/v1/owners
+export VERCEL_API_TOKEN="..."          # Vercel Dashboard → search "Tokens" (Full Account scope)
+export TF_VAR_vercel_team_id=""        # team_... from Vercel Dashboard → team Settings → General. Empty for personal.
+export GITHUB_TOKEN="ghp_..."          # github.com/settings/tokens → classic PAT, `repo` scope
+export GITHUB_OWNER="Conrad-Labs"      # repo owner (must match repo_url in terraform.tfvars)
+
+# Mirror of RENDER_API_KEY for the per-env github module. Read by env-roots'
+# var.render_api_key; ignored by this shared workspace.
+export TF_VAR_render_api_key="$RENDER_API_KEY"
+
+export CLOUDFLARE_API_TOKEN=""         # Cloudflare API token (R2 bucket management) — see integrations/R2_STORAGE.md
+export TF_VAR_cloudflare_account_id="" # Cloudflare Account ID (same across all envs)
+export TF_VAR_s3_access_key_id=""      # R2 API token Access Key ID (same across all envs)
+export TF_VAR_s3_secret_access_key=""  # R2 API token Secret Access Key
