@@ -1,0 +1,122 @@
+# =============================================================================
+# Local Development Infrastructure
+#
+# Starts PostgreSQL, Redis, and MinIO locally so you can run the app
+# without installing anything on your machine.
+#
+# Usage:
+#   pnpm infra:up                    start all services (waits for healthy)
+#   pnpm infra:down                  stop all services (data is preserved)
+#   pnpm infra:down --volumes        stop all services AND delete all data (for this sandbox slot)
+#
+# The app itself (pnpm dev) still runs outside Docker as normal.
+# These services match the versions used in production on Render.
+#
+# Parallel sandboxes: `pnpm infra:up` resolves a sandbox slot (shared across
+# every Genesis-derived checkout on the machine, not just this repo) and
+# exports the *_PORT variables below plus a project name (via
+# COMPOSE_PROJECT_NAME or -p), so each checkout gets its own containers,
+# volumes, and host ports. The defaults here are slot 0's ports.
+# Run `pnpm sandbox` to see your slot.
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 16: matches the version used on Render
+  # Connection string (slot 0 default): postgresql://genesis:genesis@localhost:5433/genesis
+  # other slots offset by slot x 100
+  # Host port 5433 (not Postgres's default 5432) so the container doesn't
+  # collide with a system-installed Postgres that's already bound to 5432.
+  # The container itself still listens on 5432 internally.
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    environment:
+      POSTGRES_USER: genesis
+      POSTGRES_PASSWORD: genesis
+      POSTGRES_DB: genesis
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U genesis -d genesis"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Redis 7: matches the version used on Render
+  # Connection string (slot 0 default): redis://localhost:6379; other slots
+  # offset by slot x 100
+  # Used by BullMQ for background and scheduled job processing.
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # MinIO: S3-compatible local object storage
+  # API (slot 0 default):     http://localhost:9000
+  # Console (slot 0 default): http://localhost:9001  (username: genesis, password: genesis123)
+  # Other slots offset by slot x 100.
+  #
+  # Note: MinIO is not yet wired up in the application code. This service
+  # is here so local dev matches production infrastructure from the start.
+  # When integrating, use the AWS S3 SDK pointed at http://localhost:9000
+  # (slot 0 default; other slots offset by slot x 100).
+  # ---------------------------------------------------------------------------
+  minio:
+    image: minio/minio
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    environment:
+      MINIO_ROOT_USER: genesis
+      MINIO_ROOT_PASSWORD: genesis123
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # MinIO bucket bootstrap: one-shot init container.
+  # Gated behind the `init` profile so it does NOT start with `pnpm infra:up`
+  # (services with profiles are excluded from the default `up`). It is run
+  # explicitly by `pnpm setup` (or `docker compose run --rm minio-init`) after
+  # the infra is healthy, to create the default `file-uploads` bucket.
+  # `mb --ignore-existing` makes this safe to re-run.
+  # ---------------------------------------------------------------------------
+  minio-init:
+    image: minio/mc
+    profiles: ["init"]
+    restart: "no"
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: genesis
+      MINIO_ROOT_PASSWORD: genesis123
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD} &&
+      mc mb --ignore-existing local/file-uploads &&
+      echo 'MinIO bucket file-uploads ready.'
+      "
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:

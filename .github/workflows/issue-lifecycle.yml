@@ -1,0 +1,159 @@
+name: Issue Lifecycle Labels
+
+on:
+  create:
+  pull_request:
+    types: [opened, ready_for_review, reopened, closed]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  sync-labels:
+    if: github.event_name == 'pull_request' || github.event.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const LIFECYCLE = [
+              "planning",
+              "ready-for-dev",
+              "dev-in-progress",
+              "in-review",
+              "ready-to-release",
+              "released",
+            ];
+            const RETIRED_LIFECYCLE = ["qa", "ready-to-deploy"];
+            const EXCLUSIVE = [...LIFECYCLE, ...RETIRED_LIFECYCLE];
+
+            const branchIssueNumber = (ref) => {
+              const match = /^[a-z]+-(\d+)-/.exec(ref ?? "");
+              return match ? Number(match[1]) : null;
+            };
+
+            const linkedIssueNumbers = (pr) => {
+              const numbers = new Set();
+              const branchNumber = branchIssueNumber(pr.head.ref);
+              if (branchNumber) numbers.add(branchNumber);
+              const closingKeywords =
+                /(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)/gi;
+              for (const match of (pr.body ?? "").matchAll(closingKeywords)) {
+                numbers.add(Number(match[1]));
+              }
+              return [...numbers];
+            };
+
+            const getIssue = async (issue_number) => {
+              try {
+                const { data: issue } = await github.rest.issues.get({
+                  ...context.repo,
+                  issue_number,
+                });
+                return issue.pull_request ? null : issue;
+              } catch {
+                return null;
+              }
+            };
+
+            const setLifecycleLabel = async (issue, label) => {
+              const current = issue.labels.map((l) =>
+                typeof l === "string" ? l : l.name,
+              );
+              for (const stale of current) {
+                if (EXCLUSIVE.includes(stale) && stale !== label) {
+                  await github.rest.issues.removeLabel({
+                    ...context.repo,
+                    issue_number: issue.number,
+                    name: stale,
+                  });
+                }
+              }
+              if (label && !current.includes(label)) {
+                await github.rest.issues.addLabels({
+                  ...context.repo,
+                  issue_number: issue.number,
+                  labels: [label],
+                });
+              }
+              core.info(`#${issue.number} -> ${label ?? "(no lifecycle label)"}`);
+            };
+
+            const closeIssue = async (issue) => {
+              await github.rest.issues.update({
+                ...context.repo,
+                issue_number: issue.number,
+                state: "closed",
+                state_reason: "completed",
+              });
+            };
+
+            if (context.eventName === "create") {
+              const issueNumber = branchIssueNumber(context.payload.ref);
+              if (!issueNumber) return;
+              const issue = await getIssue(issueNumber);
+              if (issue?.state === "open") {
+                await setLifecycleLabel(issue, "dev-in-progress");
+              }
+              return;
+            }
+
+            const pr = context.payload.pull_request;
+            const action = context.payload.action;
+
+            if (action !== "closed") {
+              for (const issueNumber of linkedIssueNumbers(pr)) {
+                const issue = await getIssue(issueNumber);
+                if (issue?.state !== "open") continue;
+                await setLifecycleLabel(
+                  issue,
+                  pr.draft ? "dev-in-progress" : "in-review",
+                );
+              }
+              return;
+            }
+
+            if (!pr.merged) return;
+
+            /**
+             * The release PR merges develop into main and carries no closing
+             * keywords, so the issues it ships are found by label instead. They
+             * are already closed at this point; the sweep only re-stamps them.
+             */
+            if (pr.base.ref === "main") {
+              const shipped = await github.paginate(
+                github.rest.issues.listForRepo,
+                { ...context.repo, state: "all", labels: "ready-to-release" },
+              );
+              for (const issue of shipped) {
+                if (issue.pull_request) continue;
+                await github.rest.issues.createComment({
+                  ...context.repo,
+                  issue_number: issue.number,
+                  body: `Released to main via #${pr.number}.`,
+                });
+                await setLifecycleLabel(issue, "released");
+                await closeIssue(issue);
+              }
+            }
+
+            /**
+             * A hotfix merges straight into main, so its issue skips
+             * ready-to-release. main is not the default branch, which means
+             * GitHub never auto-closes from there.
+             */
+            const mergedLabel =
+              pr.base.ref === "develop"
+                ? "ready-to-release"
+                : pr.base.ref === "main"
+                  ? "released"
+                  : null;
+            if (!mergedLabel) return;
+
+            for (const issueNumber of linkedIssueNumbers(pr)) {
+              const issue = await getIssue(issueNumber);
+              if (!issue) continue;
+              await setLifecycleLabel(issue, mergedLabel);
+              await closeIssue(issue);
+            }

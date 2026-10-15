@@ -1,0 +1,1 @@
+../staging/variables.tf

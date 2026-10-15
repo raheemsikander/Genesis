@@ -1,0 +1,43 @@
+name: e2e
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: ['__never__']
+
+# Always-build: every run compiles a fresh binary with the current JS + env,
+# and each maestro job needs only its build job (which always runs) so it can
+# never be auto-skipped. Fingerprint reuse is intentionally NOT used here —
+# reused native binaries carry stale JS/env (the fingerprint covers native
+# only), and applying current JS to a reused build requires EAS Update (OTA),
+# which is deferred. Revisit reuse+OTA to cut per-run build cost.
+jobs:
+  build_ios:
+    type: build
+    environment: preview
+    params:
+      platform: ios
+      profile: e2e
+
+  maestro_ios:
+    needs: [build_ios]
+    type: maestro
+    environment: preview
+    params:
+      build_id: ${{ needs.build_ios.outputs.build_id }}
+      flow_path: ['e2e']
+
+  build_android:
+    type: build
+    environment: preview
+    params:
+      platform: android
+      profile: e2e
+
+  maestro_android:
+    needs: [build_android]
+    type: maestro
+    environment: preview
+    params:
+      build_id: ${{ needs.build_android.outputs.build_id }}
+      flow_path: ['e2e']
