@@ -1,0 +1,100 @@
+name: Server Tests
+
+on:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Server Unit & Integration Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: genesis_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/genesis_test
+      CI: true
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: ./.github/actions/setup
+
+      - name: Run Server Unit Tests
+        run: pnpm --filter server test:unit --coverage
+
+      # Service containers cannot override an image's command, and minio/minio
+      # needs `server /data`, so MinIO is started explicitly instead.
+      - name: Start MinIO
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=genesis \
+            -e MINIO_ROOT_PASSWORD=genesis123 \
+            minio/minio server /data
+          for _ in $(seq 1 30); do
+            if curl -sf http://localhost:9000/minio/health/live > /dev/null; then
+              echo "MinIO is ready."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "MinIO did not become ready within 60s." >&2
+          docker logs minio >&2
+          exit 1
+
+      - name: Run Server Integration Tests
+        env:
+          S3_ENDPOINT: http://localhost:9000
+          S3_ACCESS_KEY_ID: genesis
+          S3_SECRET_ACCESS_KEY: genesis123
+          # env.ts skips validation when CI is true, so the Zod defaults for
+          # these two never apply and the bucket would reach the SDK undefined.
+          S3_BUCKET: file-uploads
+          S3_REGION: us-east-1
+          # Opts out of the global-setup check that guards a developer's own
+          # stack; these containers are throwaway.
+          GENESIS_TEST_INFRA: 1
+        run: pnpm --filter server test:integration --coverage
+
+      - name: Stop MinIO
+        if: always()
+        run: docker rm -f minio
+
+      - name: Upload unit test coverage to Codecov
+        if: ${{ env.CODECOV_TOKEN != '' && !contains(github.event.pull_request.labels.*.name, 'skip-coverage-check') }}
+        uses: codecov/codecov-action@v6
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          token: ${{ env.CODECOV_TOKEN }}
+          files: apps/server/coverage/unit/lcov.info
+          flags: server-unit
+          fail_ci_if_error: false
+
+      - name: Upload integration test coverage to Codecov
+        if: ${{ env.CODECOV_TOKEN != '' && !contains(github.event.pull_request.labels.*.name, 'skip-coverage-check') }}
+        uses: codecov/codecov-action@v6
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          token: ${{ env.CODECOV_TOKEN }}
+          files: apps/server/coverage/integration/lcov.info
+          flags: server-integration
+          fail_ci_if_error: false
