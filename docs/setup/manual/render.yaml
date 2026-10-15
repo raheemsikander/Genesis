@@ -1,0 +1,203 @@
+# =============================================================================
+# Render Infrastructure
+#
+# Uses the projects/environments structure so one Blueprint manages all
+# environments. Currently only staging is active.
+#
+# Adding a new environment: see docs/setup/PROD_ENV.md (production) or
+# docs/setup/NEW_ENV.md (staging/other).
+# =============================================================================
+
+projects:
+  - name: genesis
+
+    environments:
+
+      # =========================================================================
+      # STAGING
+      # =========================================================================
+      - name: staging
+
+        envVarGroups:
+          - name: staging-secrets
+            envVars:
+              - key: CORS_ORIGIN
+                sync: false
+              - key: CLERK_SECRET_KEY
+                sync: false
+              - key: CLERK_PUBLISHABLE_KEY
+                sync: false
+              - key: RESEND_API_KEY
+                sync: false
+              - key: RESEND_FROM_EMAIL
+                sync: false
+              - key: S3_ENDPOINT
+                sync: false
+              - key: S3_ACCESS_KEY_ID
+                sync: false
+              - key: S3_SECRET_ACCESS_KEY
+                sync: false
+              - key: S3_REGION
+                sync: false
+              - key: S3_BUCKET
+                sync: false
+
+        services:
+          - type: web
+            name: genesis-api-staging
+            runtime: docker
+            dockerfilePath: ./Dockerfile
+            dockerContext: .
+            branch: develop
+            autoDeployTrigger: off # Render will NOT auto-deploy on git push. Deploys only happen via GitHub Actions or manual deploy from the dashboard.
+            healthCheckPath: /health
+            envVars:
+              - key: NODE_ENV
+                value: production
+              - key: DATABASE_URL
+                fromDatabase:
+                  name: genesis-postgres-staging
+                  property: connectionString
+              - key: REDIS_URL
+                fromService:
+                  type: keyvalue
+                  name: genesis-redis-staging
+                  property: connectionString
+              - fromGroup: staging-secrets
+
+          # -----------------------------------------------------------------
+          # Worker — processes background jobs and scheduled tasks via BullMQ.
+          # To enable (when you need background/scheduled jobs):
+          #   1. Uncomment the worker block below
+          #   2. Uncomment the "Trigger Render worker deploy" step in
+          #      .github/workflows/deploy.yml
+          #   3. In the root package.json, change "dev": "turbo dev"
+          #      to "dev": "turbo dev dev:worker"
+          # Redis and the worker code can stay in the repo — no cost when unused.
+          # To pause temporarily: Render Dashboard → the worker service → Settings → Suspend Service.
+          # -----------------------------------------------------------------
+          # - type: worker
+          #   name: genesis-worker-staging
+          #   runtime: docker
+          #   dockerfilePath: ./Dockerfile
+          #   dockerContext: .
+          #   branch: develop
+          #   autoDeployTrigger: off
+          #   dockerCommand: node apps/server/dist/async-tasks/worker.mjs
+          #   envVars:
+          #     - key: NODE_ENV
+          #       value: production
+          #     - key: DATABASE_URL
+          #       fromDatabase:
+          #         name: genesis-postgres-staging
+          #         property: connectionString
+          #     - key: REDIS_URL
+          #       fromService:
+          #         type: keyvalue
+          #         name: genesis-redis-staging
+          #         property: connectionString
+          #     - fromGroup: staging-secrets
+
+          - type: keyvalue
+            name: genesis-redis-staging
+            plan: free
+            maxmemoryPolicy: noeviction
+            ipAllowList: []
+
+        databases:
+          - name: genesis-postgres-staging
+            databaseName: genesis
+            user: genesis
+            plan: free
+
+      # =========================================================================
+      # PRODUCTION
+      # See docs/setup/PROD_ENV.md for the full checklist
+      # =========================================================================
+      # - name: production
+      #
+      #   envVarGroups:
+      #     - name: production-secrets
+      #       envVars:
+      #         - key: CORS_ORIGIN
+      #           sync: false
+      #         - key: CLERK_SECRET_KEY
+      #           sync: false
+      #         - key: CLERK_PUBLISHABLE_KEY
+      #           sync: false
+      #         - key: RESEND_API_KEY
+      #           sync: false
+      #         - key: RESEND_FROM_EMAIL
+      #           sync: false
+      #         - key: S3_ENDPOINT
+      #           sync: false
+      #         - key: S3_ACCESS_KEY_ID
+      #           sync: false
+      #         - key: S3_SECRET_ACCESS_KEY
+      #           sync: false
+      #         - key: S3_REGION
+      #           sync: false
+      #         - key: S3_BUCKET
+      #           sync: false
+      #
+      #   services:
+      #     - type: web
+      #       name: genesis-api-prod
+      #       runtime: docker
+      #       dockerfilePath: ./Dockerfile
+      #       dockerContext: .
+      #       branch: main
+      #       autoDeployTrigger: off
+      #       healthCheckPath: /health
+      #       envVars:
+      #         - key: NODE_ENV
+      #           value: production
+      #         - key: DATABASE_URL
+      #           fromDatabase:
+      #             name: genesis-postgres-prod
+      #             property: connectionString
+      #         - key: REDIS_URL
+      #           fromService:
+      #             type: keyvalue
+      #             name: genesis-redis-prod
+      #             property: connectionString
+      #         - fromGroup: production-secrets
+      #
+      #     # -----------------------------------------------------------------
+      #     # Worker — processes background jobs and scheduled tasks via BullMQ.
+      #     # To disable: comment out this block and the worker deploy hook in
+      #     # .github/workflows/deploy.yml.
+      #     # -----------------------------------------------------------------
+      #     - type: worker
+      #       name: genesis-worker-prod
+      #       runtime: docker
+      #       dockerfilePath: ./Dockerfile
+      #       dockerContext: .
+      #       branch: main
+      #       autoDeployTrigger: off
+      #       dockerCommand: node apps/server/dist/async-tasks/worker.mjs
+      #       envVars:
+      #         - key: NODE_ENV
+      #           value: production
+      #         - key: DATABASE_URL
+      #           fromDatabase:
+      #             name: genesis-postgres-prod
+      #             property: connectionString
+      #         - key: REDIS_URL
+      #           fromService:
+      #             type: keyvalue
+      #             name: genesis-redis-prod
+      #             property: connectionString
+      #         - fromGroup: production-secrets
+      #
+      #     - type: keyvalue
+      #       name: genesis-redis-prod
+      #       plan: starter
+      #       maxmemoryPolicy: noeviction
+      #       ipAllowList: []
+      #
+      #   databases:
+      #     - name: genesis-postgres-prod
+      #       databaseName: genesis
+      #       user: genesis
+      #       plan: basic-256mb
