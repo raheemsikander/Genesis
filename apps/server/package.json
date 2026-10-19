@@ -44,7 +44,7 @@
 		"pino-http": "^11.0.0",
 		"react": "catalog:",
 		"resend": "^6.12.2",
-		"rollbar": "^3.1.0",
+		"rollbar": "^4.0.0",
 		"zod": "catalog:"
 	},
 	"devDependencies": {
