@@ -57,7 +57,7 @@ jobs:
 
       # Pinned EAS CLI (concrete version, not @latest) — reproducible and keeps
       # the runtime-resolved CLI out of scope with EXPO_TOKEN. Bump deliberately.
-      - uses: expo/expo-github-action@v8
+      - uses: expo/expo-github-action@v9
         with:
           eas-version: 20.4.0
           token: ${{ secrets.EXPO_TOKEN }}
