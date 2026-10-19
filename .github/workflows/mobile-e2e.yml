@@ -49,7 +49,7 @@ jobs:
     # cap it so a stalled EAS run fails fast instead of riding the 6h default.
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v6
         with:
